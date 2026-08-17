@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f1e7">
+<title>サケミル｜日本酒が気になり始めたら</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   サケミル / SAKEMIRU
+   トークン: bg #f6f1e7 / surface #fffdf9 / ink #221f1a
+   accent-1 藍 #263b52 / accent-2 麹金 #b8892b
+   甘辛ゲージ: 辛口 #3d6b8a → 甘口 #d97ea0 (このサイトの signature)
+========================================================= */
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;background:#eee7d9;color:#221f1a;
+  font-family:"Noto Sans JP",-apple-system,BlinkMacSystemFont,sans-serif;
+}
+h1,h2,h3,.serif{font-family:"Noto Serif JP",serif;}
+button,input,textarea,select{font:inherit;}
+button{cursor:pointer;}
+a{color:inherit;text-decoration:none;}
+::-webkit-scrollbar{display:none;}
+*{scrollbar-width:none;}
+
+.app{
+  width:100%;max-width:640px;min-height:100vh;margin:auto;
+  background:#f6f1e7;position:relative;
+  box-shadow:0 0 60px rgba(0,0,0,.12);
+}
+
+/* ===== HEADER ===== */
+.header{
+  position:sticky;top:0;z-index:60;
+  background:rgba(246,241,231,.92);backdrop-filter:blur(14px);
+  border-bottom:1px solid #e2d7c3;
+  padding:12px 16px 10px;
+}
+.headerRow{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.brand{display:flex;align-items:center;gap:8px;}
+.brandMark{
+  width:34px;height:34px;border-radius:9px;
+  background:linear-gradient(155deg,#263b52,#3d5f80);
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;flex:none;
+}
+.brandName{font-size:19px;font-weight:900;letter-spacing:-.5px;}
+.brandName span{color:#b8892b;}
+.brandSub{font-size:9.5px;color:#8a8072;margin-top:1px;}
+.langSelect{
+  border:1px solid #ddd0b8;background:#fffdf9;border-radius:10px;
+  padding:7px 9px;font-size:11px;color:#221f1a;
+}
+.searchWrap{display:flex;gap:7px;margin-top:11px;}
+.searchInput{
+  flex:1;min-width:0;border:1px solid #ddd0b8;background:#fffdf9;
+  border-radius:12px;padding:10px 13px;font-size:15px;outline:none;
+}
+.searchInput:focus{border-color:#263b52;}
+.searchBtn{
+  width:44px;border:0;border-radius:12px;background:#263b52;color:#fff;font-size:16px;
+}
+
+/* ===== FILTER ===== */
+.filterArea{padding:10px 16px 4px;}
+.filterRow{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;}
+.chip{
+  white-space:nowrap;border:1px solid #ddd0b8;background:#fffdf9;
+  border-radius:20px;padding:6px 11px;font-size:11px;color:#54493a;
+}
+.chip.active{background:#263b52;border-color:#263b52;color:#fff;}
+.filterLabel{font-size:10px;color:#a89a82;margin:6px 2px 3px;font-weight:700;letter-spacing:.03em;}
+
+/* ===== HERO ===== */
+.hero{padding:18px 17px 4px;}
+.hero h1{margin:0;font-size:23px;line-height:1.5;letter-spacing:-.5px;}
+.hero h1 span{color:#b8892b;}
+.hero p{margin:8px 0 0;color:#78705f;font-size:12px;line-height:1.8;}
+
+/* ===== LIST ===== */
+.list{padding:14px 16px 40px;display:flex;flex-direction:column;gap:12px;}
+.card{
+  background:#fffdf9;border:1px solid #eadfc7;border-radius:16px;
+  padding:13px;display:flex;gap:12px;
+}
+.cardImg{
+  width:64px;height:84px;border-radius:10px;flex:none;
+  display:flex;align-items:center;justify-content:center;font-size:28px;
+}
+.cardBody{flex:1;min-width:0;}
+.cardTop{display:flex;justify-content:space-between;gap:6px;align-items:flex-start;}
+.cardName{font-size:15px;font-weight:700;}
+.cardBrewery{font-size:10.5px;color:#8a8072;margin-top:1px;}
+.cardType{
+  font-size:9.5px;background:#eef2ee;color:#3d6b52;border-radius:6px;
+  padding:2px 6px;flex:none;white-space:nowrap;
+}
+.gauge{margin-top:9px;}
+.gaugeLabels{display:flex;justify-content:space-between;font-size:8.5px;color:#a89a82;margin-bottom:2px;}
+.gaugeTrack{
+  height:6px;border-radius:4px;position:relative;
+  background:linear-gradient(90deg,#3d6b8a,#e2d3d9,#d97ea0);
+}
+.gaugeDot{
+  position:absolute;top:50%;width:11px;height:11px;border-radius:50%;
+  background:#fffdf9;border:2.5px solid #221f1a;transform:translate(-50%,-50%);
+}
+.cardMeta{display:flex;justify-content:space-between;align-items:center;margin-top:9px;}
+.cardPrice{font-size:13px;font-weight:800;}
+.cardDiff{font-size:9.5px;color:#a15a3a;}
+
+/* ===== DETAIL OVERLAY (ヘッダー見切れ対策: 独立フルスクリーンレイヤー) ===== */
+.detailLayer{
+  position:fixed;inset:0;z-index:200;background:#f6f1e7;
+  display:none;overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+.detailLayer.open{display:block;}
+.detailHeader{
+  position:sticky;top:0;z-index:5;
+  background:rgba(246,241,231,.95);backdrop-filter:blur(14px);
+  border-bottom:1px solid #e2d7c3;
+  padding:12px 14px;display:flex;align-items:center;gap:10px;
+}
+.backBtn{
+  width:36px;height:36px;border:0;border-radius:50%;background:#fffdf9;
+  border:1px solid #eadfc7;font-size:16px;flex:none;
+}
+.detailHeaderTitle{font-size:14px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+.detailHero{padding:20px 18px 6px;display:flex;gap:16px;}
+.detailImg{
+  width:104px;height:138px;border-radius:12px;flex:none;
+  display:flex;align-items:center;justify-content:center;font-size:44px;
+  box-shadow:0 10px 24px rgba(38,59,82,.18);
+}
+.detailTitleBox h2{margin:0;font-size:21px;line-height:1.35;}
+.detailBrewery{font-size:12px;color:#78705f;margin-top:5px;}
+.detailBrewery a{color:#263b52;font-weight:700;border-bottom:1px dotted #263b52;}
+.factRow{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.factChip{font-size:10.5px;background:#eef1f5;color:#263b52;border-radius:7px;padding:3px 8px;}
+
+.buyBar{margin:16px 18px;display:flex;gap:8px;}
+.buyBtn{
+  flex:1;background:#263b52;color:#fff;border:0;border-radius:12px;
+  padding:13px;font-size:13.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.buyBtn small{font-weight:400;opacity:.8;font-size:10px;}
+
+
+.section{padding:18px 18px 4px;}
+.sectionTitle{font-size:15px;font-weight:800;margin:0 0 8px;display:flex;align-items:center;gap:6px;}
+.sectionTitle .num{
+  font-size:10px;background:#263b52;color:#fff;border-radius:5px;padding:2px 6px;font-weight:700;
+}
+.bodyText{font-size:12.8px;line-height:1.95;color:#403a2f;white-space:pre-line;}
+
+.pairCard{
+  background:#fffdf9;border:1px solid #eadfc7;border-radius:13px;padding:12px;margin-bottom:9px;
+}
+.pairName{font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:6px;}
+.pairWhy{font-size:11.8px;color:#5c5344;line-height:1.8;margin-top:5px;}
+
+.horizList{display:flex;gap:10px;overflow-x:auto;padding:2px 0 8px;}
+.miniCard{
+  flex:none;width:126px;background:#fffdf9;border:1px solid #eadfc7;border-radius:12px;padding:9px;
+}
+.miniImg{width:100%;height:60px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:6px;}
+.miniName{font-size:11px;font-weight:700;line-height:1.4;}
+.miniSub{font-size:9.5px;color:#8a8072;margin-top:2px;}
+.simScore{font-size:9px;color:#b8892b;font-weight:700;margin-top:3px;}
+
+.sourceLink{
+  display:flex;align-items:center;gap:7px;font-size:11.5px;color:#263b52;
+  padding:9px 0;border-bottom:1px solid #ece1cb;
+}
+.sourceLink:last-child{border-bottom:0;}
+.sourceLink .ext{margin-left:auto;color:#a89a82;}
+
+.recipeBtn{
+  display:inline-flex;align-items:center;gap:7px;background:#fff4e0;color:#a15a1a;
+  border:1px solid #f0dcae;border-radius:11px;padding:9px 13px;font-size:12px;font-weight:700;margin-top:4px;
+}
+
+/* ===== REVIEWS ===== */
+.reviewAddBtn{
+  width:100%;border:1.5px dashed #c9b98f;background:#fffdf9;border-radius:12px;
+  padding:12px;font-size:12.5px;color:#7a5c1e;font-weight:700;
+}
+.reviewItem{background:#fffdf9;border:1px solid #eadfc7;border-radius:13px;padding:12px;margin-top:10px;}
+.reviewHead{display:flex;justify-content:space-between;font-size:11px;color:#8a8072;}
+.reviewName{font-weight:700;color:#221f1a;}
+.reviewText{font-size:12.3px;line-height:1.8;margin-top:6px;color:#403a2f;}
+.reviewScores{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+.rsChip{font-size:9.5px;background:#f2ede1;border-radius:6px;padding:3px 7px;color:#5c5344;}
+.voteRow{display:flex;gap:6px;margin-top:9px;}
+.voteBtn{
+  font-size:10px;border:1px solid #eadfc7;background:#faf6ee;border-radius:8px;padding:5px 8px;color:#7a705f;
+}
+.voteBtn.voted{background:#eef1f5;border-color:#263b52;color:#263b52;}
+
+/* ===== RATINGS (詳細ページ最下部のみ) ===== */
+.ratingsBlock{background:#221f1a;color:#f6f1e7;border-radius:18px;margin:22px 18px 0;padding:18px;}
+.ratingsTitle{font-size:14px;font-weight:800;margin-bottom:4px;}
+.ratingsOverall{font-size:11px;color:#c9bfa9;margin-bottom:14px;}
+.axisRow{margin-bottom:12px;}
+.axisTop{display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:5px;}
+.axisTop b{font-size:13px;color:#e8c877;}
+.axisBar{height:7px;border-radius:5px;background:#3a352c;overflow:hidden;}
+.axisFill{height:100%;border-radius:5px;background:linear-gradient(90deg,#b8892b,#e8c877);}
+.axisFill.gauge2{background:linear-gradient(90deg,#3d6b8a,#e2d3d9,#d97ea0);}
+.difficultyNote{font-size:10px;color:#9a917e;margin-top:14px;line-height:1.7;}
+
+.detailFoot{height:50px;}
+
+/* ===== MODAL ===== */
+.modalMask{
+  position:fixed;inset:0;background:rgba(20,17,12,.55);z-index:300;
+  display:none;align-items:flex-end;justify-content:center;
+}
+.modalMask.open{display:flex;}
+.modalBox{
+  width:100%;max-width:640px;background:#f6f1e7;border-radius:20px 20px 0 0;
+  padding:20px 18px 26px;max-height:88vh;overflow-y:auto;
+}
+.modalTitle{font-size:16px;font-weight:800;margin-bottom:12px;}
+.field{margin-bottom:12px;}
+.fieldLabel{font-size:11.5px;font-weight:700;color:#5c5344;margin-bottom:5px;display:flex;justify-content:space-between;}
+.fieldLabel b{color:#b8892b;}
+input[type=range]{width:100%;accent-color:#263b52;}
+.textArea{
+  width:100%;border:1px solid #ddd0b8;background:#fffdf9;border-radius:10px;
+  padding:10px;font-size:13px;min-height:80px;resize:vertical;
+}
+.textInput{
+  width:100%;border:1px solid #ddd0b8;background:#fffdf9;border-radius:10px;padding:9px 11px;font-size:13px;
+}
+.modalBtnRow{display:flex;gap:8px;margin-top:16px;}
+.modalBtn{flex:1;border:0;border-radius:11px;padding:12px;font-size:13px;font-weight:700;}
+.modalBtn.primary{background:#263b52;color:#fff;}
+.modalBtn.ghost{background:#fff;border:1px solid #ddd0b8;color:#54493a;}
+
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+  background:#221f1a;color:#fff;padding:10px 18px;border-radius:20px;font-size:12px;z-index:500;
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.toast.show{opacity:1;}
+
+.emptyState{padding:40px 20px;text-align:center;color:#a89a82;font-size:12.5px;}
+
+.helperLink{font-size:10.5px;color:#a89a82;text-align:center;padding:10px 20px 30px;line-height:1.8;}
+.helperLink a{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ===================== HEADER / HOME ===================== -->
+  <header class="header">
+    <div class="headerRow">
+      <div class="brand">
+        <div class="brandMark" onclick="handleLogoTap()">🍶</div>
+        <div>
+          <div class="brandName" data-i18n="brandName">サケ<span>ミル</span></div>
+          <div class="brandSub" data-i18n="brandSub">気になったら、覗いてみる日本酒案内</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <select class="langSelect" id="langSelect" onchange="setLang(this.value)"></select>
+        <button class="langSelect" id="adminEntryBtn" style="display:none;padding:7px 9px;" onclick="openAdminPanel()">⚙</button>
+      </div>
+    </div>
+    <div class="searchWrap">
+      <input class="searchInput" id="searchInput" data-i18n-ph="searchPlaceholder" oninput="renderList()">
+      <button class="searchBtn" onclick="renderList()">🔍</button>
+    </div>
+  </header>
+
+  <div class="filterArea">
+    <div class="filterLabel" data-i18n="filterPrice">価格帯</div>
+    <div class="filterRow" id="priceFilterRow"></div>
+    <div class="filterLabel" data-i18n="filterType">種別</div>
+    <div class="filterRow" id="typeFilterRow"></div>
+    <div class="filterLabel" data-i18n="filterFlavor">味わい</div>
+    <div class="filterRow" id="flavorFilterRow"></div>
+  </div>
+
+  <div class="hero">
+    <h1 data-i18n="heroTitle">日本酒、<span>まず1本</span>から。</h1>
+    <p data-i18n="heroBody">甘辛・コク・香り・入手難易度などをスコア化。気になる1本から好みの系統をたどれます。</p>
+  </div>
+
+  <div class="list" id="listArea"></div>
+
+  <div class="helperLink">
+    <span data-i18n="addSakeHelp">このデータを増やしたい方向け：</span>
+    <a onclick="showAddSakePrompt()" data-i18n="addSakeLink">新しい銘柄の調査プロンプトを発行</a>
+  </div>
+
+  <!-- ===================== DETAIL LAYER ===================== -->
+  <div class="detailLayer" id="detailLayer">
+    <div class="detailHeader">
+      <button class="backBtn" onclick="closeDetail()">←</button>
+      <div class="detailHeaderTitle" id="detailHeaderTitle"></div>
+    </div>
+    <div id="detailContent"></div>
+    <div class="detailFoot"></div>
+  </div>
+
+  <!-- ===================== REVIEW MODAL ===================== -->
+  <div class="modalMask" id="reviewModalMask">
+    <div class="modalBox">
+      <div class="modalTitle" data-i18n="reviewModalTitle">口コミを投稿</div>
+      <div id="reviewFormFields"></div>
+      <div class="field">
+        <div class="fieldLabel" data-i18n="reviewNameLabel">お名前（ニックネーム可）</div>
+        <input class="textInput" id="reviewName" data-i18n-ph="reviewNamePh">
+      </div>
+      <div class="field">
+        <div class="fieldLabel" data-i18n="reviewTextLabel">コメント</div>
+        <textarea class="textArea" id="reviewText" data-i18n-ph="reviewTextPh"></textarea>
+      </div>
+      <div class="modalBtnRow">
+        <button class="modalBtn ghost" onclick="closeReviewModal()" data-i18n="cancel">キャンセル</button>
+        <button class="modalBtn primary" onclick="submitReview()" data-i18n="submit">投稿する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ADD-SAKE PROMPT MODAL ===================== -->
+  <div class="modalMask" id="addSakeModalMask">
+    <div class="modalBox">
+      <div class="modalTitle" data-i18n="addSakeModalTitle">新規銘柄 追加用プロンプト</div>
+      <p class="bodyText" data-i18n="addSakeModalBody" style="margin-bottom:10px;">
+        下のテキストをコピーし、新しいClaudeの会話に貼り付けてください。実在する日本酒を調べ、このサイトのJSON形式でデータを作成してくれます。
+      </p>
+      <textarea class="textArea" id="addSakePromptBox" style="min-height:260px;font-size:10.5px;"></textarea>
+      <div class="modalBtnRow">
+        <button class="modalBtn ghost" onclick="closeAddSakeModal()" data-i18n="close">閉じる</button>
+        <button class="modalBtn primary" onclick="copyAddSakePrompt()" data-i18n="copy">コピー</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ADMIN: ログインゲート ===================== -->
+  <div class="modalMask" id="adminLoginMask">
+    <div class="modalBox">
+      <div class="modalTitle" id="adminLoginTitle">管理画面パスワード</div>
+      <p class="bodyText" id="adminLoginHint" style="margin-bottom:10px;"></p>
+      <div class="field">
+        <input class="textInput" id="adminPwInput" type="password" placeholder="パスワード">
+      </div>
+      <div class="modalBtnRow">
+        <button class="modalBtn ghost" onclick="closeAdminLogin()">キャンセル</button>
+        <button class="modalBtn primary" onclick="submitAdminLogin()">ログイン</button>
+      </div>
+      <p class="bodyText" style="margin-top:12px;font-size:10px;color:#a89a82;">
+        ※このパスワードはブラウザ内だけで確認する簡易ロックです（バックエンド認証ではありません）。他人と共有するURLでは十分な保護になりません。
+      </p>
+    </div>
+  </div>
+
+  <!-- ===================== ADMIN: パネル本体 ===================== -->
+  <div class="modalMask" id="adminPanelMask">
+    <div class="modalBox" style="max-height:92vh;">
+      <div class="modalTitle">🍶 管理画面</div>
+      <div style="display:flex;gap:6px;margin-bottom:14px;">
+        <button class="chip active" id="tabBtn-list" onclick="switchAdminTab('list')">銘柄管理</button>
+        <button class="chip" id="tabBtn-backup" onclick="switchAdminTab('backup')">バックアップ</button>
+        <button class="chip" id="tabBtn-settings" onclick="switchAdminTab('settings')">Amazon連携設定</button>
+      </div>
+
+      <div id="adminTab-list">
+        <button class="modalBtn primary" style="margin-bottom:12px;" onclick="openSakeForm(null)">＋ 新規銘柄を追加</button>
+        <div id="adminSakeList"></div>
+      </div>
+
+      <div id="adminTab-backup" style="display:none;">
+        <p class="bodyText">全銘柄データをJSONで書き出し／読み込みできます。別端末・別ブラウザへの引き継ぎにも使えます。</p>
+        <button class="modalBtn ghost" style="margin:10px 0;" onclick="exportSakeJSON()">⬇ バックアップを書き出す（ダウンロード）</button>
+        <div class="fieldLabel">バックアップを読み込む（JSONを貼り付け）</div>
+        <textarea class="textArea" id="importJsonBox" style="min-height:140px;"></textarea>
+        <button class="modalBtn primary" style="margin-top:8px;" onclick="importSakeJSON()">読み込んで反映する</button>
+      </div>
+
+      <div id="adminTab-settings" style="display:none;">
+        <div class="sectionTitle" style="margin-bottom:6px;">🔴 楽天（すぐに使える）</div>
+        <div class="field">
+          <div class="fieldLabel">楽天ウェブサービス アプリID</div>
+          <input class="textInput" id="settingRakutenAppId">
+        </div>
+        <div class="field">
+          <div class="fieldLabel">楽天アフィリエイトID</div>
+          <input class="textInput" id="settingRakutenAffiliateId">
+        </div>
+        <div class="field">
+          <div class="fieldLabel">楽天API中継Worker URL（画像・価格の自動取得用）</div>
+          <input class="textInput" id="settingRakutenWorkerUrl" placeholder="https://your-rakuten-worker.example.workers.dev">
+        </div>
+        <button class="modalBtn ghost" style="margin-bottom:10px;" onclick="showRakutenWorkerCode()">楽天用Workerコードを見る／コピー</button>
+
+        <div class="field" style="margin-top:16px;padding-top:16px;border-top:1px solid #eadfc7;">
+          <div class="sectionTitle" style="margin-bottom:6px;">🟦 Amazon（要:180日で3件以上の紹介実績）</div>
+          <div class="fieldLabel">Amazonアソシエイトタグ</div>
+          <input class="textInput" id="settingAffiliateTag">
+        </div>
+        <div class="field">
+          <div class="fieldLabel">PA-API連携Worker URL（未接続なら空欄でOK）</div>
+          <input class="textInput" id="settingWorkerUrl" placeholder="https://your-worker.example.workers.dev">
+        </div>
+        <button class="modalBtn primary" onclick="saveAdminSettings()">設定を保存</button>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid #eadfc7;">
+          <div class="sectionTitle" style="margin-bottom:6px;">🔌 Amazon画像・価格の自動取得（PA-API）をつなぐ手順</div>
+          <div class="bodyText">
+1. Amazonアソシエイト・プログラムに登録し、直近180日で3件以上の紹介実績を作る（PA-API利用申請の条件）
+2. 審査後、Product Advertising API の利用申請を行い、アクセスキー・シークレットキーを発行
+3. 下の「Workerコード」をコピーし、Cloudflare Workers（無料枠で可）に新規Workerとしてデプロイ
+4. Worker の環境変数（Settings → Variables）に AMAZON_ACCESS_KEY / AMAZON_SECRET_KEY / AMAZON_PARTNER_TAG を設定
+5. デプロイ後に発行される Worker のURLを、上の「PA-API連携Worker URL」欄に貼って保存
+6. 以降、詳細ページを開くたびに商品画像・現在価格が自動取得されます（取得できない場合は自作アイコンのまま表示）
+          </div>
+          <button class="modalBtn ghost" style="margin-top:10px;" onclick="showWorkerCode()">Workerコードを見る／コピー</button>
+        </div>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid #eadfc7;">
+          <div class="sectionTitle" style="margin-bottom:6px;">🔒 管理パスワードの変更</div>
+          <input class="textInput" id="newAdminPw" type="password" placeholder="新しいパスワード">
+          <button class="modalBtn ghost" style="margin-top:8px;" onclick="changeAdminPassword()">パスワードを変更</button>
+        </div>
+      </div>
+
+      <div class="modalBtnRow">
+        <button class="modalBtn ghost" onclick="closeAdminPanel()">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ADMIN: 銘柄 編集/追加フォーム ===================== -->
+  <div class="modalMask" id="sakeFormMask">
+    <div class="modalBox" style="max-height:92vh;">
+      <div class="modalTitle" id="sakeFormTitle">銘柄を追加</div>
+      <div id="sakeFormFields"></div>
+      <div class="modalBtnRow">
+        <button class="modalBtn ghost" onclick="closeSakeForm()">キャンセル</button>
+        <button class="modalBtn primary" onclick="saveSakeForm()">保存する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== Workerコード表示 ===================== -->
+  <div class="modalMask" id="workerCodeMask">
+    <div class="modalBox">
+      <div class="modalTitle">Cloudflare Worker コード（PA-API連携）</div>
+      <p class="bodyText" style="margin-bottom:8px;">Cloudflare Workersの新規Workerにこのコードを貼り付けてデプロイしてください。</p>
+      <textarea class="textArea" id="workerCodeBox" style="min-height:280px;font-size:10px;" readonly></textarea>
+      <div class="modalBtnRow">
+        <button class="modalBtn ghost" onclick="document.getElementById('workerCodeMask').classList.remove('open')">閉じる</button>
+        <button class="modalBtn primary" onclick="copyWorkerCode()">コピー</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+/* =========================================================
+   1. i18n 辞書
+   ========================================================= */
+const I18N = {
+"ja":{
+  brandName:"サケ|ミル", brandSub:"気になったら、覗いてみる日本酒案内",
+  searchPlaceholder:"銘柄・蔵元で検索",
+  filterPrice:"価格帯", filterType:"種別", filterFlavor:"味わい",
+  priceAll:"すべて", price_3000:"〜3,000円", price_5000:"〜5,000円", price_10000:"〜10,000円",
+  price_30000:"〜30,000円", price_over:"30,000円〜",
+  typeAll:"すべて", type_junmai:"純米", type_junmaiginjo:"純米吟醸", type_ginjo:"吟醸",
+  type_daiginjo:"大吟醸", type_honjozo:"本醸造", type_junmaidaiginjo:"純米大吟醸",
+  heroTitle:"日本酒、<span>まず1本</span>から。",
+  heroBody:"甘辛・コク・香り・入手難易度などをスコア化。気になる1本から好みの系統をたどれます。",
+  addSakeHelp:"このデータを増やしたい方向け：", addSakeLink:"新しい銘柄の調査プロンプトを発行",
+  buyAmazon:"Amazonで見る", buyRakuten:"楽天で見る", cookpad:"クックパッドでレシピを見る",
+  sec_history:"この酒について", sec_brewery:"蔵元について", sec_pairing:"合うおつまみ",
+  sec_sameBrewery:"同じ蔵元の酒", sec_similar:"味わいが似ている銘柄", sec_sources:"参考・引用元",
+  sec_reviews:"口コミ", sec_ratings:"評価スコア（5点満点）",
+  addReview:"口コミを投稿する", reviewModalTitle:"口コミを投稿",
+  reviewNameLabel:"お名前（ニックネーム可）", reviewNamePh:"例：ぬる燗好き",
+  reviewTextLabel:"コメント", reviewTextPh:"香りや味わいの印象、飲んだシーンなど自由にどうぞ",
+  cancel:"キャンセル", submit:"投稿する", close:"閉じる", copy:"コピー",
+  noReviews:"まだ口コミがありません。最初の1件を投稿してみましょう。",
+  helpful:"参考になった", axis_sweetness:"辛口 ⇄ 甘口", axis_body:"コク・ボディ",
+  axis_acidity:"酸味", axis_aroma:"香り", axis_umami:"旨味", axis_difficulty:"入手困難度（定価）",
+  ratingsSub:"口コミの評価が、表示スコアの約半分に反映されます",
+  difficultyNote:"入手困難度は「定価のまま店頭・通販で買える度合い」を示す独自指標です。数値が高いほど、プレミア化・抽選販売などで定価入手が難しい傾向にあります。",
+  votePrefix:"評価に投票：", polishRate:"精米歩合", prefecture:"産地", price:"価格",
+  addSakeModalTitle:"新規銘柄 追加用プロンプト",
+  addSakeModalBody:"下のテキストをコピーし、新しいClaudeの会話に貼り付けてください。実在する日本酒を調べ、このサイトのJSON形式でデータを作成してくれます。",
+  amazonNote:"※商品画像は楽天市場APIまたはAmazon公式API（PA-API）を通じて取得する仕組みです。管理画面でAPIが未接続の間は自作アイコンで代替表示しています。",
+  wikiTitle:"Wikipediaで調べる"
+},
+"en":{
+  brandName:"SAKE|MIRU", brandSub:"Where curiosity about sake begins",
+  searchPlaceholder:"Search by name or brewery",
+  filterPrice:"Price", filterType:"Type", filterFlavor:"Flavor",
+  priceAll:"All", price_3000:"Up to ¥3,000", price_5000:"Up to ¥5,000", price_10000:"Up to ¥10,000",
+  price_30000:"Up to ¥30,000", price_over:"¥30,000+",
+  typeAll:"All", type_junmai:"Junmai", type_junmaiginjo:"Junmai Ginjo", type_ginjo:"Ginjo",
+  type_daiginjo:"Daiginjo", type_honjozo:"Honjozo", type_junmaidaiginjo:"Junmai Daiginjo",
+  heroTitle:"Sake, <span>one bottle</span> at a time.",
+  heroBody:"Every bottle is scored on sweetness, body, aroma and how hard it is to find at retail price — so one bottle you like can lead you to more.",
+  addSakeHelp:"Want to add more data?", addSakeLink:"Generate a research prompt for a new bottle",
+  buyAmazon:"View on Amazon", buyRakuten:"View on Rakuten", cookpad:"See recipe on Cookpad",
+  sec_history:"About this sake", sec_brewery:"About the brewery", sec_pairing:"Pairs well with",
+  sec_sameBrewery:"More from this brewery", sec_similar:"Similar in flavor", sec_sources:"Sources & references",
+  sec_reviews:"Reviews", sec_ratings:"Ratings (out of 5)",
+  addReview:"Write a review", reviewModalTitle:"Write a review",
+  reviewNameLabel:"Name (nickname is fine)", reviewNamePh:"e.g. Warm-sake fan",
+  reviewTextLabel:"Comment", reviewTextPh:"Share how it smelled, tasted, or where you drank it",
+  cancel:"Cancel", submit:"Post", close:"Close", copy:"Copy",
+  noReviews:"No reviews yet — be the first to post one.",
+  helpful:"Helpful", axis_sweetness:"Dry ⇄ Sweet", axis_body:"Body / Richness",
+  axis_acidity:"Acidity", axis_aroma:"Aroma", axis_umami:"Umami", axis_difficulty:"Scarcity at retail price",
+  ratingsSub:"Reader reviews feed back into roughly half of the displayed score",
+  difficultyNote:"Scarcity score reflects how easily this bottle can be bought at its listed retail price. Higher values mean it tends to sell out, go to lottery sales, or trade above retail.",
+  votePrefix:"Vote on this rating:", polishRate:"Polishing ratio", prefecture:"Region", price:"Price",
+  addSakeModalTitle:"New bottle research prompt",
+  addSakeModalBody:"Copy the text below and paste it into a new Claude conversation. It will research a real sake and return data in this site's JSON format.",
+  amazonNote:"Product images are fetched via the Rakuten Ichiba API or Amazon's official Product Advertising API. Until an API is connected in admin settings, a drawn placeholder icon is shown instead.",
+  wikiTitle:"Look up on Wikipedia"
+},
+"zh-CN":{
+  brandName:"清酒|镜", brandSub:"当你开始对日本酒感兴趣时",
+  searchPlaceholder:"按名称或酒藏搜索",
+  filterPrice:"价格区间", filterType:"种类", filterFlavor:"风味",
+  priceAll:"全部", price_3000:"3,000日元以内", price_5000:"5,000日元以内", price_10000:"10,000日元以内",
+  price_30000:"30,000日元以内", price_over:"30,000日元以上",
+  typeAll:"全部", type_junmai:"纯米", type_junmaiginjo:"纯米吟酿", type_ginjo:"吟酿",
+  type_daiginjo:"大吟酿", type_honjozo:"本酿造", type_junmaidaiginjo:"纯米大吟酿",
+  heroTitle:"从<span>一瓶</span>开始了解日本酒。",
+  heroBody:"甜辣度、酒体、香气、入手难度等均量化评分，从喜欢的一瓶延伸到相似风味的选择。",
+  addSakeHelp:"想扩充数据？", addSakeLink:"生成新酒款调研提示词",
+  buyAmazon:"在Amazon查看", buyRakuten:"在乐天查看", cookpad:"在Cookpad查看食谱",
+  sec_history:"关于这款酒", sec_brewery:"关于酒藏", sec_pairing:"推荐搭配",
+  sec_sameBrewery:"同一酒藏的其他酒款", sec_similar:"风味相近的酒款", sec_sources:"参考资料",
+  sec_reviews:"用户评价", sec_ratings:"评分（满分5分）",
+  addReview:"发表评价", reviewModalTitle:"发表评价",
+  reviewNameLabel:"称呼（昵称也可）", reviewNamePh:"例：喜欢温酒",
+  reviewTextLabel:"评论", reviewTextPh:"欢迎分享香气、口感或饮用场景",
+  cancel:"取消", submit:"发布", close:"关闭", copy:"复制",
+  noReviews:"暂无评价，来发表第一条吧。",
+  helpful:"有帮助", axis_sweetness:"辛口 ⇄ 甘口", axis_body:"酒体浓郁度",
+  axis_acidity:"酸味", axis_aroma:"香气", axis_umami:"旨味", axis_difficulty:"定价入手难度",
+  ratingsSub:"用户评价约以一半权重反映到显示分数中",
+  difficultyNote:"入手难度指标衡量按标价购买的难易程度。数值越高，代表越容易售罄、需抽签或被溢价交易。",
+  votePrefix:"为该评分投票：", polishRate:"精米步合", prefecture:"产地", price:"价格",
+  addSakeModalTitle:"新酒款调研提示词",
+  addSakeModalBody:"复制下方文本并粘贴到新的Claude对话中，它会调研一款真实日本酒并按本站JSON格式返回数据。",
+  amazonNote:"商品图片通过乐天市场API或Amazon官方Product Advertising API获取。管理后台未接入API前，以自绘图标代替显示。",
+  wikiTitle:"在维基百科查看"
+},
+"zh-TW":{
+  brandName:"清酒|映", brandSub:"當你開始對日本酒感興趣時",
+  searchPlaceholder:"依名稱或酒藏搜尋",
+  filterPrice:"價格區間", filterType:"種類", filterFlavor:"風味",
+  priceAll:"全部", price_3000:"3,000日圓以內", price_5000:"5,000日圓以內", price_10000:"10,000日圓以內",
+  price_30000:"30,000日圓以內", price_over:"30,000日圓以上",
+  typeAll:"全部", type_junmai:"純米", type_junmaiginjo:"純米吟釀", type_ginjo:"吟釀",
+  type_daiginjo:"大吟釀", type_honjozo:"本釀造", type_junmaidaiginjo:"純米大吟釀",
+  heroTitle:"從<span>一瓶</span>開始認識日本酒。",
+  heroBody:"甜辣度、酒體、香氣、入手難度皆量化評分，從喜歡的一瓶延伸到相似風味的選擇。",
+  addSakeHelp:"想擴充資料？", addSakeLink:"產生新酒款調查提示詞",
+  buyAmazon:"在Amazon查看", buyRakuten:"在樂天查看", cookpad:"在Cookpad查看食譜",
+  sec_history:"關於這款酒", sec_brewery:"關於酒藏", sec_pairing:"推薦搭配",
+  sec_sameBrewery:"同一酒藏的其他酒款", sec_similar:"風味相近的酒款", sec_sources:"參考資料",
+  sec_reviews:"評論", sec_ratings:"評分（滿分5分）",
+  addReview:"發表評論", reviewModalTitle:"發表評論",
+  reviewNameLabel:"稱呼（暱稱可）", reviewNamePh:"例：喜歡溫酒",
+  reviewTextLabel:"評論內容", reviewTextPh:"歡迎分享香氣、口感或飲用場景",
+  cancel:"取消", submit:"發布", close:"關閉", copy:"複製",
+  noReviews:"尚無評論，來發表第一則吧。",
+  helpful:"有幫助", axis_sweetness:"辛口 ⇄ 甘口", axis_body:"酒體濃郁度",
+  axis_acidity:"酸味", axis_aroma:"香氣", axis_umami:"旨味", axis_difficulty:"定價入手難度",
+  ratingsSub:"讀者評論約以一半權重反映到顯示分數中",
+  difficultyNote:"入手難度衡量按標價購買的容易程度。數值越高，代表越容易售罄、需抽籤或被溢價交易。",
+  votePrefix:"為此評分投票：", polishRate:"精米步合", prefecture:"產地", price:"價格",
+  addSakeModalTitle:"新酒款調查提示詞",
+  addSakeModalBody:"複製下方文字並貼到新的Claude對話中，它會調查一款真實日本酒並依本站JSON格式回傳資料。",
+  amazonNote:"商品圖片透過樂天市場API或Amazon官方Product Advertising API取得。管理後台尚未串接API前，以自繪圖示代替顯示。",
+  wikiTitle:"在維基百科查看"
+},
+"ko":{
+  brandName:"사케|미루", brandSub:"사케가 궁금해지기 시작했을 때",
+  searchPlaceholder:"銘柄・양조장 검색",
+  filterPrice:"가격대", filterType:"종류", filterFlavor:"맛",
+  priceAll:"전체", price_3000:"3,000엔 이하", price_5000:"5,000엔 이하", price_10000:"10,000엔 이하",
+  price_30000:"30,000엔 이하", price_over:"30,000엔 이상",
+  typeAll:"전체", type_junmai:"준마이", type_junmaiginjo:"준마이 긴죠", type_ginjo:"긴죠",
+  type_daiginjo:"다이긴죠", type_honjozo:"혼죠조", type_junmaidaiginjo:"준마이 다이긴죠",
+  heroTitle:"사케, <span>한 병</span>부터.",
+  heroBody:"단맛·바디감·향·정가 구매 난이도 등을 점수화. 마음에 든 한 병에서 취향을 넓혀갈 수 있습니다.",
+  addSakeHelp:"데이터를 늘리고 싶다면:", addSakeLink:"신규 銘柄 조사 프롬프트 생성",
+  buyAmazon:"Amazon에서 보기", buyRakuten:"라쿠텐에서 보기", cookpad:"Cookpad에서 레시피 보기",
+  sec_history:"이 술에 대하여", sec_brewery:"양조장 소개", sec_pairing:"어울리는 안주",
+  sec_sameBrewery:"같은 양조장의 다른 술", sec_similar:"맛이 비슷한 銘柄", sec_sources:"참고・출처",
+  sec_reviews:"리뷰", sec_ratings:"평점 (5점 만점)",
+  addReview:"리뷰 작성", reviewModalTitle:"리뷰 작성",
+  reviewNameLabel:"이름(닉네임 가능)", reviewNamePh:"예: 데운 술 애호가",
+  reviewTextLabel:"코멘트", reviewTextPh:"향이나 맛에 대한 인상, 마신 상황 등 자유롭게",
+  cancel:"취소", submit:"게시", close:"닫기", copy:"복사",
+  noReviews:"아직 리뷰가 없습니다. 첫 리뷰를 남겨보세요.",
+  helpful:"도움이 됨", axis_sweetness:"辛口 ⇄ 甘口", axis_body:"바디감",
+  axis_acidity:"산미", axis_aroma:"향", axis_umami:"감칠맛", axis_difficulty:"정가 구매 난이도",
+  ratingsSub:"리뷰 평가가 표시 점수의 약 절반에 반영됩니다",
+  difficultyNote:"구매 난이도는 정가 그대로 구매 가능한 정도를 나타내는 독자 지표입니다. 수치가 높을수록 품절·추첨 판매 등으로 정가 구매가 어려운 경향이 있습니다.",
+  votePrefix:"평점에 투표:", polishRate:"정미보합", prefecture:"산지", price:"가격",
+  addSakeModalTitle:"신규 銘柄 추가 프롬프트",
+  addSakeModalBody:"아래 텍스트를 복사해 새 Claude 대화에 붙여넣으세요. 실제 사케를 조사해 이 사이트의 JSON 형식으로 데이터를 만들어 줍니다.",
+  amazonNote:"상품 이미지는 라쿠텐 이치바 API 또는 Amazon 공식 Product Advertising API를 통해 가져옵니다. 관리자 설정에서 API를 연결하기 전까지는 자체 제작 아이콘으로 대체 표시됩니다.",
+  wikiTitle:"위키백과에서 보기"
+},
+"id":{
+  brandName:"SAKE|MIRU", brandSub:"Saat rasa penasaran akan sake dimulai",
+  searchPlaceholder:"Cari nama atau pabrik",
+  filterPrice:"Kisaran harga", filterType:"Jenis", filterFlavor:"Rasa",
+  priceAll:"Semua", price_3000:"Sampai ¥3.000", price_5000:"Sampai ¥5.000", price_10000:"Sampai ¥10.000",
+  price_30000:"Sampai ¥30.000", price_over:"¥30.000+",
+  typeAll:"Semua", type_junmai:"Junmai", type_junmaiginjo:"Junmai Ginjo", type_ginjo:"Ginjo",
+  type_daiginjo:"Daiginjo", type_honjozo:"Honjozo", type_junmaidaiginjo:"Junmai Daiginjo",
+  heroTitle:"Sake, mulai dari <span>satu botol</span>.",
+  heroBody:"Tingkat manis, body, aroma, dan kelangkaan diberi skor — satu botol favorit bisa jadi pintu ke pilihan lain yang mirip.",
+  addSakeHelp:"Ingin menambah data?", addSakeLink:"Buat prompt riset botol baru",
+  buyAmazon:"Lihat di Amazon", buyRakuten:"Lihat di Rakuten", cookpad:"Lihat resep di Cookpad",
+  sec_history:"Tentang sake ini", sec_brewery:"Tentang pabriknya", sec_pairing:"Cocok disantap dengan",
+  sec_sameBrewery:"Botol lain dari pabrik ini", sec_similar:"Rasa serupa", sec_sources:"Sumber & referensi",
+  sec_reviews:"Ulasan", sec_ratings:"Skor (dari 5)",
+  addReview:"Tulis ulasan", reviewModalTitle:"Tulis ulasan",
+  reviewNameLabel:"Nama (boleh nama panggilan)", reviewNamePh:"cth: Penggemar sake hangat",
+  reviewTextLabel:"Komentar", reviewTextPh:"Ceritakan aroma, rasa, atau momen minumnya",
+  cancel:"Batal", submit:"Kirim", close:"Tutup", copy:"Salin",
+  noReviews:"Belum ada ulasan — jadilah yang pertama.",
+  helpful:"Membantu", axis_sweetness:"Kering ⇄ Manis", axis_body:"Body / Kekentalan",
+  axis_acidity:"Keasaman", axis_aroma:"Aroma", axis_umami:"Umami", axis_difficulty:"Kelangkaan di harga eceran",
+  ratingsSub:"Ulasan pembaca memengaruhi sekitar separuh dari skor yang ditampilkan",
+  difficultyNote:"Skor kelangkaan menunjukkan seberapa mudah botol ini dibeli seharga label. Semakin tinggi, semakin sering habis, dijual via undian, atau diperjualbelikan di atas harga eceran.",
+  votePrefix:"Beri suara untuk skor ini:", polishRate:"Rasio penggilingan", prefecture:"Daerah", price:"Harga",
+  addSakeModalTitle:"Prompt riset botol baru",
+  addSakeModalBody:"Salin teks di bawah dan tempel ke percakapan Claude baru. Ia akan meriset sake asli dan mengembalikan data dalam format JSON situs ini.",
+  amazonNote:"Gambar produk diambil lewat Rakuten Ichiba API atau Amazon Product Advertising API resmi. Sebelum API terhubung di pengaturan admin, ikon buatan sendiri ditampilkan sebagai gantinya.",
+  wikiTitle:"Lihat di Wikipedia"
+}
+};
+
+/* Amazonマーケットプレイス（言語→ドメイン。affiliate tagは自分のIDに差し替えてください） */
+const AMAZON_DOMAIN = {
+  "ja":"amazon.co.jp", "en":"amazon.com", "zh-CN":"amazon.cn",
+  "zh-TW":"amazon.com", "ko":"amazon.co.jp", "id":"amazon.co.jp"
+};
+const DEFAULT_SETTINGS = {
+  affiliateTag: "your-associate-id-22", // ← Amazonアソシエイトタグ（管理画面からも変更可）
+  workerUrl: "",                        // ← Amazon PA-API連携Worker（売上実績が貯まったら）
+  rakutenAppId: "",                     // ← 楽天ウェブサービスのアプリID（即日発行可）
+  rakutenAffiliateId: "",               // ← 楽天アフィリエイトID
+  rakutenWorkerUrl: ""                  // ← 楽天API中継Worker（CORS回避用、署名不要の軽量版）
+};
+function getSettings(){
+  return Object.assign({}, DEFAULT_SETTINGS, JSON.parse(localStorage.getItem("sakemiru_settings")||"{}"));
+}
+function saveSettings(s){
+  localStorage.setItem("sakemiru_settings", JSON.stringify(s));
+}
+
+let currentLang = "ja";
+
+/* =========================================================
+   2. 日本酒データ（デモ用サンプル4銘柄・2蔵元）
+      score系はすべて0〜100の直接値（5点満点からの換算はしない）
+   ========================================================= */
+const DEFAULT_SAKE_DATA = [
+{
+  id:"dassai-45",
+  name:"獺祭 純米大吟醸45", nameRomaji:"Dassai Junmai Daiginjo 45",
+  breweryId:"asahishuzo", brewery:"旭酒造", breweryRomaji:"Asahi Shuzo",
+  prefecture:"山口県", type:"junmaidaiginjo", seimaibuai:45, price:2475,
+  scores:{sweetness:3.2, body:2.8, acidity:2.3, aroma:3.8, umami:2.6, difficulty:1.0},
+  flavorTags:["フルーティ","華やか","定番"],
+  history:"すべての銘柄を純米大吟醸規格のみで仕込む旭酒造の看板商品。山田錦を45%まで磨いて仕込み、2019年に先代の「50」からグレードアップして誕生しました。熟したりんごや洋梨を思わせる華やかな香りと、綺麗な酸を伴う穏やかな甘みが特徴で、獺祭シリーズの入り口として位置づけられています。",
+  breweryHistory:"山口県岩国市の旭酒造は、杜氏の勘や経験だけに頼らず、社員全員でデータに基づいた酒造りを行う体制を敷き、山田錦を使った純米大吟醸だけを造り続けている酒蔵です。かつて経営が苦しかった時期を乗り越え、品質本位の酒造りで「獺祭」を国内外で知られるブランドへと育てました。",
+  pairing:[
+    {food:"生ハムと洋梨のカルパッチョ", why:"りんごや洋梨を思わせる吟醸香が、料理の果実の風味と重なり合います。"},
+    {food:"だし巻き卵", why:"穏やかな甘みが出汁の旨味と喧嘩せず、優しい後味でまとまります。"},
+    {food:"白身魚のカルパッチョ", why:"綺麗な酸がオリーブオイルの脂を洗い流し、魚の甘みを引き立てます。"}
+  ],
+  sources:[
+    {title:"獺祭 純米大吟醸45（獺祭の蔵元 公式サイト）","url":"https://dassai.com/product/main/45.html"},
+    {title:"獺祭について（獺祭の蔵元 公式サイト）","url":"https://dassai.com/about/"}
+  ],
+  amazonQuery:"獺祭 純米大吟醸45 720ml",
+  emoji:"🍶", color:"linear-gradient(160deg,#3d5f80,#263b52)"
+},
+{
+  id:"dassai-23",
+  name:"獺祭 純米大吟醸 磨き二割三分", nameRomaji:"Dassai Junmai Daiginjo Migaki Niwarisanbu (23)",
+  breweryId:"asahishuzo", brewery:"旭酒造", breweryRomaji:"Asahi Shuzo",
+  prefecture:"山口県", type:"junmaidaiginjo", seimaibuai:23, price:6380,
+  scores:{sweetness:3.5, body:3.2, acidity:2.2, aroma:4.3, umami:3.0, difficulty:3.3},
+  flavorTags:["華やか","上質","贈答向き"],
+  history:"山田錦を23%まで、7日間以上かけて丁寧に磨き上げて仕込む、獺祭シリーズの最高峰。米の外側の77%を削り落とし、雑味のない透明感のある酒質に仕上げています。華やかな香りと蜂蜜を思わせる上品な甘み、きれいに切れていく後口が特徴です。",
+  breweryHistory:"山口県岩国市の旭酒造は、杜氏の勘や経験だけに頼らず、社員全員でデータに基づいた酒造りを行う体制を敷き、山田錦を使った純米大吟醸だけを造り続けている酒蔵です。かつて経営が苦しかった時期を乗り越え、品質本位の酒造りで「獺祭」を国内外で知られるブランドへと育てました。",
+  pairing:[
+    {food:"甘鯛の昆布締め", why:"華やかな香りと昆布の旨味が呼応し、上品な魚料理と好相性です。"},
+    {food:"生ハムメロン", why:"蜂蜜のような甘みがメロンの甘さと重なり、余韻を長く伸ばします。"},
+    {food:"栗きんとん", why:"米の上品な甘みが栗の風味と調和し、後口のキレが甘さをリセットしてくれます。"}
+  ],
+  sources:[
+    {title:"獺祭 純米大吟醸 磨き二割三分（獺祭の蔵元 公式サイト）","url":"https://dassai.com/product/main/23.html"},
+    {title:"獺祭について（獺祭の蔵元 公式サイト）","url":"https://dassai.com/about/"}
+  ],
+  amazonQuery:"獺祭 純米大吟醸 磨き二割三分 720ml",
+  emoji:"🍾", color:"linear-gradient(160deg,#b8892b,#8a6420)"
+},
+{
+  id:"hakkaisan-tokubetsu-honjozo",
+  name:"八海山 特別本醸造", nameRomaji:"Hakkaisan Tokubetsu Honjozo",
+  breweryId:"hakkaisanjozo", brewery:"八海醸造", breweryRomaji:"Hakkaisan Jozo",
+  prefecture:"新潟県", type:"honjozo", seimaibuai:55, price:1452,
+  scores:{sweetness:1.8, body:2.4, acidity:2.6, aroma:1.6, umami:2.6, difficulty:0.5},
+  flavorTags:["淡麗辛口","燗酒向き","定番"],
+  history:"新潟県南魚沼市、八海山の伏流水「雷電様の清水」を仕込み水に用いた、八海山を代表する定番酒。五百万石などの酒米を55%まで磨き、やわらかな口当たりとキレのよい淡麗辛口に仕上げています。冷やしても燗をつけても味わいが崩れず、日常の食中酒として長く親しまれています。",
+  breweryHistory:"新潟県南魚沼市の八海醸造は、豪雪地帯の伏流水と選び抜いた酒米を用い、「良い酒を、多くの人に」をモットーに酒造りを続ける蔵元です。長年の修練で培った技術と設備で、特別な日の酒だけでなく日常に寄り添う定番酒の質にもこだわっています。",
+  pairing:[
+    {food:"ほっけの塩焼き", why:"脂の乗った塩気の効いた魚に、淡麗辛口のキレが寄り添い後味をさっぱりまとめます。"},
+    {food:"鶏の唐揚げ", why:"軽やかな酸味が油をリセットし、燗をつけると旨味がより開きます。"},
+    {food:"銀鮭の西京焼き", why:"味噌の甘じょっぱさに、すっきりした辛口が全体を引き締めます。"}
+  ],
+  sources:[
+    {title:"特別本醸造 八海山（八海山オンラインストア）","url":"https://ec-hakkaisan.com/products/1040"}
+  ],
+  amazonQuery:"八海山 特別本醸造 720ml",
+  emoji:"🍶", color:"linear-gradient(160deg,#3d6b52,#2a4a38)"
+},
+{
+  id:"hakkaisan-junmai-daiginjo",
+  name:"純米大吟醸 八海山", nameRomaji:"Junmai Daiginjo Hakkaisan",
+  breweryId:"hakkaisanjozo", brewery:"八海醸造", breweryRomaji:"Hakkaisan Jozo",
+  prefecture:"新潟県", type:"junmaidaiginjo", seimaibuai:45, price:2266,
+  scores:{sweetness:2.6, body:2.7, acidity:2.2, aroma:3.0, umami:2.8, difficulty:1.4},
+  flavorTags:["上品","食中酒","やや高級"],
+  history:"山田錦・五百万石・美山錦を45%まで磨いて仕込む純米大吟醸。特別本醸造よりも一段上の吟醸香とふくらみのある上品な甘みを持たせつつ、八海山らしい透明感のある切れの良さを残した、少し特別な日向けの食中酒です。",
+  breweryHistory:"新潟県南魚沼市の八海醸造は、豪雪地帯の伏流水と選び抜いた酒米を用い、「良い酒を、多くの人に」をモットーに酒造りを続ける蔵元です。長年の修練で培った技術と設備で、特別な日の酒だけでなく日常に寄り添う定番酒の質にもこだわっています。",
+  pairing:[
+    {food:"甘えびの刺身", why:"上品な甘みと吟醸香が、甘えび自体の繊細な甘さと響き合います。"},
+    {food:"白身魚の昆布締め", why:"透明感のある酒質が昆布の旨味を邪魔せず、素材の味を引き立てます。"},
+    {food:"茶碗蒸し", why:"ふくらみのある甘みが出汁の優しい風味と調和し、上品にまとまります。"}
+  ],
+  sources:[
+    {title:"純米大吟醸 八海山（八海山 公式サイト）","url":"https://www.hakkaisan.co.jp/sake/junmaidaiginjo45/"}
+  ],
+  amazonQuery:"八海山 純米大吟醸 720ml",
+  emoji:"🍾", color:"linear-gradient(160deg,#7a5c1e,#4a3a12)"
+}
+];
+
+/* 管理画面での追加・編集・削除はブラウザのlocalStorageに保存されます
+   （バックエンドを持たない静的サイトのため）。「バックアップを書き出す」で
+   JSONとして保存し、別ブラウザ／別端末では「バックアップを読み込む」で
+   反映してください。 */
+function loadSakeData(){
+  const raw = localStorage.getItem("sakemiru_sake_data");
+  if(raw){
+    try{ const parsed = JSON.parse(raw); if(Array.isArray(parsed) && parsed.length) return parsed; }
+    catch(e){}
+  }
+  return JSON.parse(JSON.stringify(DEFAULT_SAKE_DATA));
+}
+function persistSakeData(){
+  localStorage.setItem("sakemiru_sake_data", JSON.stringify(SAKE_DATA));
+}
+let SAKE_DATA = loadSakeData();
+
+/* 銘柄名・説明文などコンテンツの翻訳。実データ投入時にまだ多言語訳を作成していないため、
+   現時点では空にしています（すべて日本語へ自動フォールバックします）。
+   翻訳を追加する場合は、旧デモと同じ形式で id ごとに en / zh-CN / zh-TW / ko / id を追加してください。 */
+const SAKE_I18N = {};
+
+let reviewsStore = JSON.parse(localStorage.getItem("sakemiru_reviews")||"{}");
+let voteStore = JSON.parse(localStorage.getItem("sakemiru_votes")||"{}");
+
+/* 旧バージョン（0〜100点スケール）で保存された口コミが残っていると
+   5点満点の表示スコアが壊れるため、読み込み時に自動で0〜5へ換算する */
+(function migrateReviewScale(){
+  let changed = false;
+  Object.keys(reviewsStore).forEach(sakeId=>{
+    reviewsStore[sakeId].forEach(r=>{
+      const hasOldScale = Object.values(r.scores||{}).some(v=>v>5);
+      if(hasOldScale){
+        Object.keys(r.scores).forEach(k=> r.scores[k] = Math.round((r.scores[k]/20)*10)/10 );
+        changed = true;
+      }
+    });
+  });
+  if(changed) localStorage.setItem("sakemiru_reviews", JSON.stringify(reviewsStore));
+})();
+let activeFilters = {price:"all", type:"all", flavor:"all"};
+let currentDetailId = null;
+
+/* =========================================================
+   3. 翻訳適用
+   ========================================================= */
+function t(key){ return (I18N[currentLang] && I18N[currentLang][key]) || I18N.ja[key] || key; }
+
+function applyStaticI18n(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const k = el.getAttribute("data-i18n");
+    el.innerHTML = t(k);
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el=>{
+    el.placeholder = t(el.getAttribute("data-i18n-ph"));
+  });
+}
+
+function setLang(lang){
+  currentLang = lang;
+  localStorage.setItem("sakemiru_lang", lang);
+  document.documentElement.lang = lang;
+  applyStaticI18n();
+  buildFilters();
+  renderList();
+  if(currentDetailId) openDetail(currentDetailId);
+}
+
+function initLangSelect(){
+  const sel = document.getElementById("langSelect");
+  const labels = {"ja":"日本語","en":"English","zh-CN":"简体中文","zh-TW":"繁體中文","ko":"한국어","id":"Bahasa Indonesia"};
+  Object.keys(I18N).forEach(code=>{
+    const opt = document.createElement("option");
+    opt.value = code; opt.textContent = labels[code];
+    sel.appendChild(opt);
+  });
+  const saved = localStorage.getItem("sakemiru_lang");
+  currentLang = saved && I18N[saved] ? saved : "ja";
+  sel.value = currentLang;
+}
+
+function sakeName(sake){
+  const tr = SAKE_I18N[sake.id] && SAKE_I18N[sake.id][currentLang];
+  return (tr && tr.name) || sake.name;
+}
+function sakeBrewery(sake){
+  const tr = SAKE_I18N[sake.id] && SAKE_I18N[sake.id][currentLang];
+  return (tr && tr.brewery) || sake.brewery;
+}
+function sakeField(sake, field){
+  const tr = SAKE_I18N[sake.id] && SAKE_I18N[sake.id][currentLang];
+  return (tr && tr[field]) || sake[field];
+}
+
+/* =========================================================
+   4. フィルター
+   ========================================================= */
+const PRICE_TIERS = [
+  {key:"all", labelKey:"priceAll", test:()=>true},
+  {key:"t3000", labelKey:"price_3000", test:p=>p<=3000},
+  {key:"t5000", labelKey:"price_5000", test:p=>p<=5000},
+  {key:"t10000", labelKey:"price_10000", test:p=>p<=10000},
+  {key:"t30000", labelKey:"price_30000", test:p=>p<=30000},
+  {key:"over", labelKey:"price_over", test:p=>p>30000}
+];
+const TYPE_TIERS = ["all","junmai","junmaiginjo","ginjo","daiginjo","honjozo","junmaidaiginjo"];
+function allFlavorTags(){
+  const set = new Set();
+  SAKE_DATA.forEach(s=>s.flavorTags.forEach(f=>set.add(f)));
+  return ["all",...set];
+}
+
+function buildFilters(){
+  const priceRow = document.getElementById("priceFilterRow");
+  priceRow.innerHTML = PRICE_TIERS.map(p=>
+    `<button class="chip ${activeFilters.price===p.key?'active':''}" onclick="setFilter('price','${p.key}')">${t(p.labelKey)}</button>`
+  ).join("");
+
+  const typeRow = document.getElementById("typeFilterRow");
+  typeRow.innerHTML = TYPE_TIERS.map(k=>{
+    const label = k==="all" ? t("typeAll") : t("type_"+k);
+    return `<button class="chip ${activeFilters.type===k?'active':''}" onclick="setFilter('type','${k}')">${label}</button>`;
+  }).join("");
+
+  const flavorRow = document.getElementById("flavorFilterRow");
+  flavorRow.innerHTML = allFlavorTags().map(f=>{
+    const label = f==="all" ? t("typeAll") : f;
+    return `<button class="chip ${activeFilters.flavor===f?'active':''}" onclick="setFilter('flavor','${f}')">${label}</button>`;
+  }).join("");
+}
+
+function setFilter(kind, val){
+  activeFilters[kind] = val;
+  buildFilters();
+  renderList();
+}
+
+function filteredSake(){
+  const q = (document.getElementById("searchInput").value||"").trim().toLowerCase();
+  return SAKE_DATA.filter(s=>{
+    const tier = PRICE_TIERS.find(p=>p.key===activeFilters.price);
+    if(tier && !tier.test(s.price)) return false;
+    if(activeFilters.type!=="all" && s.type!==activeFilters.type) return false;
+    if(activeFilters.flavor!=="all" && !s.flavorTags.includes(activeFilters.flavor)) return false;
+    if(q){
+      const hay = (sakeName(s)+" "+sakeBrewery(s)+" "+s.nameRomaji).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+/* =========================================================
+   5. 一覧描画
+   ========================================================= */
+function renderList(){
+  const area = document.getElementById("listArea");
+  const items = filteredSake();
+  if(items.length===0){
+    area.innerHTML = `<div class="emptyState">🔍<br>${t("noReviews")==="" ? "" : ""}</div>`;
+    area.innerHTML = `<div class="emptyState">🔍</div>`;
+    return;
+  }
+  area.innerHTML = items.map(cardHTML).join("");
+}
+
+function cardHTML(s){
+  return `
+  <div class="card" onclick="openDetail('${s.id}')">
+    <div class="cardImg" style="background:${s.color}">${s.emoji}</div>
+    <div class="cardBody">
+      <div class="cardTop">
+        <div>
+          <div class="cardName">${sakeName(s)}</div>
+          <div class="cardBrewery">${sakeBrewery(s)} ・ ${s.prefecture}</div>
+        </div>
+        <div class="cardType">${t("type_"+s.type)}</div>
+      </div>
+      <div class="gauge">
+        <div class="gaugeLabels"><span>${t("axis_sweetness").split(" ⇄")[0]||"辛"}</span><span>${(t("axis_sweetness").split("⇄")[1]||"甘").trim()}</span></div>
+        <div class="gaugeTrack"><div class="gaugeDot" style="left:${displayScore(s,'sweetness')/5*100}%;"></div></div>
+      </div>
+      <div class="cardMeta">
+        <div class="cardPrice">¥${s.price.toLocaleString()}</div>
+        <div class="cardDiff">⚡ ${displayScore(s,'difficulty').toFixed(1)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   6. スコア計算（口コミの平均を約50%反映）
+   ========================================================= */
+function getReviews(sakeId){ return reviewsStore[sakeId] || []; }
+
+function displayScore(sake, axis){
+  const base = sake.scores[axis];
+  const revs = getReviews(sake.id).filter(r=>typeof r.scores[axis]==="number");
+  if(revs.length===0) return base;
+  const avg = revs.reduce((sum,r)=>sum+r.scores[axis],0)/revs.length;
+  // 口コミ側の重みは件数に応じて最大50%まで緩やかに増加
+  const w = Math.min(0.5, revs.length/(revs.length+3)*0.5);
+  return Math.round((base*(1-w) + avg*w)*10)/10;
+}
+
+/* =========================================================
+   7. 類似銘柄
+   ========================================================= */
+const SIM_AXES = ["sweetness","body","acidity","aroma","umami"];
+function similarSake(sake, n=3){
+  const vec = a=>SIM_AXES.map(k=>displayScore(a,k));
+  const v0 = vec(sake);
+  return SAKE_DATA.filter(s=>s.id!==sake.id).map(s=>{
+    const v = vec(s);
+    const dist = Math.sqrt(v0.reduce((sum,x,i)=>sum+Math.pow(x-v[i],2),0));
+    const maxDist = Math.sqrt(SIM_AXES.length*Math.pow(5,2));
+    const simPct = Math.round((1-dist/maxDist)*100);
+    return {sake:s, simPct};
+  }).sort((a,b)=>b.simPct-a.simPct).slice(0,n);
+}
+
+/* =========================================================
+   8. 詳細ページ
+   ========================================================= */
+function openDetail(id){
+  currentDetailId = id;
+  const sake = SAKE_DATA.find(s=>s.id===id);
+  if(!sake) return;
+  document.getElementById("detailHeaderTitle").textContent = sakeName(sake);
+  document.getElementById("detailContent").innerHTML = detailHTML(sake);
+  const layer = document.getElementById("detailLayer");
+  layer.classList.add("open");
+  layer.scrollTop = 0; // ヘッダー見切れ対策：開くたびに先頭へ戻す
+  document.body.style.overflow = "hidden";
+  tryFetchAmazonData(sake);
+  tryFetchRakutenData(sake);
+}
+function closeDetail(){
+  document.getElementById("detailLayer").classList.remove("open");
+  document.body.style.overflow = "";
+  currentDetailId = null;
+}
+
+function amazonUrl(sake){
+  const domain = AMAZON_DOMAIN[currentLang] || "amazon.co.jp";
+  const q = encodeURIComponent(sake.amazonQuery);
+  const tag = getSettings().affiliateTag;
+  return `https://www.${domain}/s?k=${q}&tag=${tag}`;
+}
+
+function rakutenUrl(sake){
+  const q = encodeURIComponent(sake.amazonQuery);
+  const {rakutenAffiliateId} = getSettings();
+  const dest = `https://search.rakuten.co.jp/search/mall/${q}/`;
+  if(rakutenAffiliateId){
+    return `https://hb.afl.rakuten.co.jp/hgc/${rakutenAffiliateId}/?pc=${encodeURIComponent(dest)}&link_type=hybrid_url`;
+  }
+  return dest;
+}
+
+/* PA-API連携: 管理画面でWorker URLを設定すると、詳細ページを開いたときに
+   商品画像・現在価格をAmazon公式APIから取得して表示を差し替える。
+   Worker未設定/取得失敗時は自作アイコンのまま何もしない（安全側に倒す）。 */
+async function tryFetchAmazonData(sake){
+  const {workerUrl} = getSettings();
+  if(!workerUrl) return;
+  try{
+    const domain = AMAZON_DOMAIN[currentLang] || "amazon.co.jp";
+    const url = `${workerUrl}?keywords=${encodeURIComponent(sake.amazonQuery)}&marketplace=${domain}`;
+    const res = await fetch(url);
+    if(!res.ok) return;
+    const data = await res.json(); // 期待する形: {image, price, url, title}
+    if(!data) return;
+    applyProductData(sake, data, "amazon");
+  }catch(e){ /* 取得できなくても表示は自作アイコンのまま継続 */ }
+}
+
+/* 楽天連携: PA-APIと違い売上実績なしで即日利用可。中継Worker（署名不要・軽量）を
+   管理画面に設定すると、詳細ページを開いたときに商品画像・価格を自動取得する。
+   Amazon PA-APIより先にこちらが成功すればそちらを優先して表示に使う。 */
+async function tryFetchRakutenData(sake){
+  const {rakutenWorkerUrl, rakutenAppId, rakutenAffiliateId} = getSettings();
+  if(!rakutenWorkerUrl || !rakutenAppId) return;
+  try{
+    const url = `${rakutenWorkerUrl}?keywords=${encodeURIComponent(sake.amazonQuery)}&applicationId=${encodeURIComponent(rakutenAppId)}&affiliateId=${encodeURIComponent(rakutenAffiliateId||"")}`;
+    const res = await fetch(url);
+    if(!res.ok) return;
+    const data = await res.json(); // 期待する形: {image, price, url, title}
+    if(!data) return;
+    applyProductData(sake, data, "rakuten");
+  }catch(e){ /* 取得できなくても表示は自作アイコンのまま継続 */ }
+}
+
+function applyProductData(sake, data, source){
+  const img = document.getElementById("detailImg-"+sake.id);
+  if(img && data.image){
+    img.style.backgroundImage = `url('${data.image}')`;
+    img.style.backgroundSize = "cover";
+    img.style.backgroundPosition = "center";
+    img.textContent = "";
+  }
+  if(source==="amazon"){
+    const priceLabel = document.getElementById("buyPriceLabel-"+sake.id);
+    if(priceLabel && data.price) priceLabel.textContent = data.price;
+    const buyBtn = document.getElementById("buyBtn-"+sake.id);
+    if(buyBtn && data.url) buyBtn.href = data.url + (data.url.includes("?")?"&":"?") + "tag=" + getSettings().affiliateTag;
+  }else if(source==="rakuten"){
+    const priceLabel = document.getElementById("rakutenPriceLabel-"+sake.id);
+    if(priceLabel && data.price) priceLabel.textContent = data.price;
+    const buyBtn = document.getElementById("rakutenBtn-"+sake.id);
+    if(buyBtn && data.url) buyBtn.href = data.url;
+  }
+}
+function cookpadUrlForFood(foodName){
+  return `https://cookpad.com/search/${encodeURIComponent(foodName)}`;
+}
+
+
+function detailHTML(sake){
+  const sameBrewery = SAKE_DATA.filter(s=>s.breweryId===sake.breweryId && s.id!==sake.id);
+  const similars = similarSake(sake);
+  const reviews = getReviews(sake.id);
+  const pairing = sakeField(sake,"pairing");
+  const history = sakeField(sake,"history");
+  const breweryHistory = sakeField(sake,"breweryHistory");
+
+  return `
+    <div class="detailHero">
+      <div class="detailImg" id="detailImg-${sake.id}" style="background:${sake.color}">${sake.emoji}</div>
+      <div class="detailTitleBox">
+        <h2>${sakeName(sake)}</h2>
+        <div class="detailBrewery">${t("prefecture")}: ${sake.prefecture} ・ <a onclick="event.stopPropagation();filterByBrewery('${sake.breweryId}')">${sakeBrewery(sake)}</a></div>
+        <div class="factRow">
+          <div class="factChip">${t("type_"+sake.type)}</div>
+          <div class="factChip">${t("polishRate")} ${sake.seimaibuai}%</div>
+          <div class="factChip">${t("price")} ¥${sake.price.toLocaleString()}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="buyBar">
+      <a class="buyBtn" id="buyBtn-${sake.id}" href="${amazonUrl(sake)}" target="_blank" rel="noopener nofollow sponsored">
+        🛒 ${t("buyAmazon")}<br><small id="buyPriceLabel-${sake.id}"></small>
+      </a>
+      <a class="buyBtn" id="rakutenBtn-${sake.id}" href="${rakutenUrl(sake)}" target="_blank" rel="noopener nofollow sponsored" style="background:#bf0000;">
+        🛒 ${t("buyRakuten")}<br><small id="rakutenPriceLabel-${sake.id}"></small>
+      </a>
+    </div>
+    <div class="section" style="padding-top:0;">
+      <div class="bodyText" style="font-size:10px;color:#a89a82;">${t("amazonNote")}</div>
+    </div>
+
+    <div class="section">
+      <div class="sectionTitle">${t("sec_history")}</div>
+      <div class="bodyText">${history}</div>
+    </div>
+
+    <div class="section">
+      <div class="sectionTitle">${t("sec_brewery")}</div>
+      <div class="bodyText">${breweryHistory}</div>
+    </div>
+
+    <div class="section">
+      <div class="sectionTitle">${t("sec_pairing")}</div>
+      ${pairing.map(p=>`
+        <div class="pairCard">
+          <div class="pairName">🍢 ${p.food}</div>
+          <div class="pairWhy">${p.why}</div>
+          <a class="recipeBtn" href="${cookpadUrlForFood(p.food)}" target="_blank" rel="noopener">📖 ${t("cookpad")}</a>
+        </div>`).join("")}
+    </div>
+
+    ${sameBrewery.length ? `
+    <div class="section">
+      <div class="sectionTitle">${t("sec_sameBrewery")}</div>
+      <div class="horizList">
+        ${sameBrewery.map(s=>`
+          <div class="miniCard" onclick="openDetail('${s.id}')">
+            <div class="miniImg" style="background:${s.color}">${s.emoji}</div>
+            <div class="miniName">${sakeName(s)}</div>
+            <div class="miniSub">¥${s.price.toLocaleString()}</div>
+          </div>`).join("")}
+      </div>
+    </div>` : ""}
+
+    <div class="section">
+      <div class="sectionTitle">${t("sec_similar")}</div>
+      <div class="horizList">
+        ${similars.map(({sake:s,simPct})=>`
+          <div class="miniCard" onclick="openDetail('${s.id}')">
+            <div class="miniImg" style="background:${s.color}">${s.emoji}</div>
+            <div class="miniName">${sakeName(s)}</div>
+            <div class="miniSub">${sakeBrewery(s)}</div>
+            <div class="simScore">${t("helpful")==="Helpful" ? "match" : "類似度"} ${simPct}%</div>
+          </div>`).join("")}
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sectionTitle">${t("sec_sources")}</div>
+      ${sake.sources.map(src=>`
+        <a class="sourceLink" href="${src.url}" target="_blank" rel="noopener">
+          🔗 ${src.title} <span class="ext">↗</span>
+        </a>`).join("")}
+    </div>
+
+    <div class="section">
+      <div class="sectionTitle">${t("sec_reviews")}</div>
+      <button class="reviewAddBtn" onclick="openReviewModal('${sake.id}')">✏️ ${t("addReview")}</button>
+      ${reviews.length===0 ? `<div class="emptyState">${t("noReviews")}</div>` :
+        reviews.slice().reverse().map((r,idx)=>reviewHTML(sake.id, reviews.length-1-idx, r)).join("")}
+    </div>
+
+    <div class="ratingsBlock">
+      <div class="ratingsTitle">⭐ ${t("sec_ratings")}</div>
+      <div class="ratingsOverall">${t("ratingsSub")}</div>
+      ${axisRowHTML(sake,"sweetness","axis_sweetness",true)}
+      ${axisRowHTML(sake,"body","axis_body")}
+      ${axisRowHTML(sake,"acidity","axis_acidity")}
+      ${axisRowHTML(sake,"aroma","axis_aroma")}
+      ${axisRowHTML(sake,"umami","axis_umami")}
+      ${axisRowHTML(sake,"difficulty","axis_difficulty")}
+      <div class="difficultyNote">${t("difficultyNote")}</div>
+    </div>
+  `;
+}
+
+function axisRowHTML(sake, axis, labelKey, isGauge){
+  const v = displayScore(sake, axis);
+  return `
+    <div class="axisRow">
+      <div class="axisTop"><span>${t(labelKey)}</span><b>${v.toFixed(1)} <small style="font-size:9px;color:#9a917e;">/5</small></b></div>
+      <div class="axisBar"><div class="axisFill ${isGauge?'gauge2':''}" style="width:${v/5*100}%;"></div></div>
+    </div>`;
+}
+
+function filterByBrewery(breweryId){
+  closeDetail();
+  document.getElementById("searchInput").value = SAKE_DATA.find(s=>s.breweryId===breweryId).brewery;
+  renderList();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+/* =========================================================
+   9. 口コミ
+   ========================================================= */
+const REVIEW_AXES = ["sweetness","body","acidity","aroma","umami","difficulty"];
+function reviewHTML(sakeId, idx, r){
+  const voteKey = sakeId+"_"+idx;
+  const voted = voteStore[voteKey] || {};
+  return `
+    <div class="reviewItem">
+      <div class="reviewHead"><span class="reviewName">${escapeHTML(r.name||"—")}</span><span>${r.date}</span></div>
+      <div class="reviewText">${escapeHTML(r.text)}</div>
+      <div class="reviewScores">
+        ${REVIEW_AXES.map(a=>`<span class="rsChip">${t("axis_"+a).split(" ⇄")[0]||t("axis_"+a)} ${Number(r.scores[a]).toFixed(1)}</span>`).join("")}
+      </div>
+      <div style="font-size:9.5px;color:#a89a82;margin-top:6px;">${t("votePrefix")}</div>
+      <div class="voteRow">
+        ${REVIEW_AXES.map(a=>`
+          <button class="voteBtn ${voted[a]?'voted':''}" onclick="voteReview('${sakeId}',${idx},'${a}')">
+            ${t("axis_"+a).split(" ⇄")[0]||t("axis_"+a)} 👍${voted[a]?" ✓":""}
+          </button>`).join("")}
+      </div>
+    </div>`;
+}
+
+function voteReview(sakeId, idx, axis){
+  const key = sakeId+"_"+idx;
+  voteStore[key] = voteStore[key] || {};
+  voteStore[key][axis] = !voteStore[key][axis];
+  localStorage.setItem("sakemiru_votes", JSON.stringify(voteStore));
+  openDetail(sakeId);
+  showToast(t("helpful"));
+}
+
+function openReviewModal(sakeId){
+  currentDetailId = sakeId;
+  const fields = document.getElementById("reviewFormFields");
+  fields.innerHTML = REVIEW_AXES.map(a=>`
+    <div class="field">
+      <div class="fieldLabel"><span>${t("axis_"+a)}</span><b id="val_${a}">2.5</b></div>
+      <input type="range" min="0" max="5" step="0.1" value="2.5" id="range_${a}" oninput="document.getElementById('val_${a}').textContent=Number(this.value).toFixed(1)">
+    </div>`).join("");
+  document.getElementById("reviewName").value = "";
+  document.getElementById("reviewText").value = "";
+  document.getElementById("reviewModalMask").classList.add("open");
+}
+function closeReviewModal(){
+  document.getElementById("reviewModalMask").classList.remove("open");
+}
+function submitReview(){
+  const sakeId = currentDetailId;
+  const text = document.getElementById("reviewText").value.trim();
+  if(!text){ showToast(t("reviewTextLabel")); return; }
+  const scores = {};
+  REVIEW_AXES.forEach(a=> scores[a] = Number(document.getElementById("range_"+a).value));
+  const review = {
+    name: document.getElementById("reviewName").value.trim() || "—",
+    text, scores,
+    date: new Date().toISOString().slice(0,10)
+  };
+  reviewsStore[sakeId] = reviewsStore[sakeId] || [];
+  reviewsStore[sakeId].push(review);
+  localStorage.setItem("sakemiru_reviews", JSON.stringify(reviewsStore));
+  closeReviewModal();
+  openDetail(sakeId);
+  showToast("✓ " + t("submit"));
+}
+
+function escapeHTML(s){
+  return String(s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+function showToast(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(()=>el.classList.remove("show"), 1600);
+}
+
+/* =========================================================
+   10. 新規銘柄 追加プロンプト（既存サイトの仕組みを踏襲）
+   ========================================================= */
+const NEW_SAKE_JSON_EXAMPLE = {
+  id:"example-sake-slug", name:"（銘柄名）", nameRomaji:"(Romaji name)",
+  breweryId:"example-brewery-slug", brewery:"（蔵元名）", breweryRomaji:"(Romaji brewery)",
+  prefecture:"（都道府県）", type:"junmaiginjo（junmai/junmaiginjo/ginjo/daiginjo/honjozo/junmaidaiginjoのいずれか）",
+  seimaibuai:55, price:3200,
+  scores:{sweetness:"0〜5（0=辛口, 5=甘口。0.1刻みで可）", body:"0〜5", acidity:"0〜5", aroma:"0〜5", umami:"0〜5", difficulty:"0〜5（0=定価で買いやすい, 5=入手困難）"},
+  flavorTags:["淡麗","フルーティ"],
+  history:"この酒についての詳しい紹介文。特徴・製法・味わいを具体的に。",
+  breweryHistory:"蔵元の歴史・こだわりについての紹介文。",
+  pairing:[{food:"料理名", why:"なぜ合うのか、味わいの共通点や対比を具体的に説明"}],
+  sources:[{title:"参照元サイト名", url:"https://..."}],
+  amazonQuery:"Amazon検索用のキーワード",
+  emoji:"🍶", color:"linear-gradient(160deg,#3d5f80,#263b52)"
+};
+function generateNewSakePrompt(){
+  const existing = SAKE_DATA.map(s=>`- ${s.name}（${s.brewery}）`).join("\n");
+  return `# サケミル 新規銘柄追加リクエスト
+
+以下のルールに沿って、実在する日本酒を1〜5件調べ、指定のJSON形式でデータを作成してください。
+
+## すでに登録済みの銘柄（重複させないでください）
+${existing}
+
+## 各項目の作り方
+- scores の各値は0〜5の直接評価（0.1刻み可）
+- difficulty（入手困難度）は「定価のまま店頭・通販で買える度合い」の逆指標。プレミア化・抽選販売されている銘柄は高めに
+- history / breweryHistory / pairing.why はできるだけ具体的に、公式サイトなどの一次情報を参考にしつつ自分の言葉でまとめる（丸写ししない）
+- sources には参考にした情報源のタイトルとURLを入れる
+- pairing は3件以上、「なぜ合うのか」を味わいの共通点や対比で具体的に説明する（cookpadへのリンクは料理名から自動生成されるので不要）
+- amazonQuery はAmazon検索で該当商品が見つかりやすいキーワード
+
+## 出力形式
+説明文なしで、以下の形式のJSON配列のみを出力してください。
+
+\`\`\`json
+${JSON.stringify([NEW_SAKE_JSON_EXAMPLE], null, 2)}
+\`\`\`
+`;
+}
+function showAddSakePrompt(){
+  document.getElementById("addSakePromptBox").value = generateNewSakePrompt();
+  document.getElementById("addSakeModalMask").classList.add("open");
+}
+function closeAddSakeModal(){
+  document.getElementById("addSakeModalMask").classList.remove("open");
+}
+function copyAddSakePrompt(){
+  const box = document.getElementById("addSakePromptBox");
+  box.select();
+  navigator.clipboard.writeText(box.value);
+  showToast("✓ Copied");
+}
+
+/* =========================================================
+   12. 管理画面（ベビキッズ同様、クライアント側のみで完結）
+   ========================================================= */
+let logoTapCount = 0, logoTapTimer = null;
+function handleLogoTap(){
+  logoTapCount++;
+  clearTimeout(logoTapTimer);
+  logoTapTimer = setTimeout(()=>{ logoTapCount = 0; }, 1500);
+  if(logoTapCount >= 5){
+    logoTapCount = 0;
+    openAdminGate();
+  }
+}
+
+function isAdminUnlocked(){ return sessionStorage.getItem("sakemiru_admin_unlocked")==="1"; }
+
+function openAdminGate(){
+  const hasPw = !!localStorage.getItem("sakemiru_admin_pw");
+  document.getElementById("adminLoginTitle").textContent = hasPw ? "管理画面パスワード" : "管理画面パスワードを設定";
+  document.getElementById("adminLoginHint").textContent = hasPw
+    ? "設定済みのパスワードを入力してください。"
+    : "初回利用です。このブラウザで使う管理パスワードを決めてください。";
+  document.getElementById("adminPwInput").value = "";
+  document.getElementById("adminLoginMask").classList.add("open");
+}
+function closeAdminLogin(){ document.getElementById("adminLoginMask").classList.remove("open"); }
+
+function submitAdminLogin(){
+  const input = document.getElementById("adminPwInput").value;
+  if(!input){ showToast("パスワードを入力してください"); return; }
+  const stored = localStorage.getItem("sakemiru_admin_pw");
+  if(!stored){
+    localStorage.setItem("sakemiru_admin_pw", input);
+    unlockAdmin();
+    return;
+  }
+  if(input === stored){ unlockAdmin(); }
+  else{ showToast("パスワードが違います"); }
+}
+function unlockAdmin(){
+  sessionStorage.setItem("sakemiru_admin_unlocked","1");
+  document.getElementById("adminEntryBtn").style.display = "block";
+  closeAdminLogin();
+  openAdminPanel();
+}
+
+function openAdminPanel(){
+  if(!isAdminUnlocked()){ openAdminGate(); return; }
+  document.getElementById("adminEntryBtn").style.display = "block";
+  switchAdminTab("list");
+  document.getElementById("adminPanelMask").classList.add("open");
+}
+function closeAdminPanel(){ document.getElementById("adminPanelMask").classList.remove("open"); }
+
+function switchAdminTab(tab){
+  ["list","backup","settings"].forEach(k=>{
+    document.getElementById("adminTab-"+k).style.display = (k===tab) ? "block" : "none";
+    document.getElementById("tabBtn-"+k).classList.toggle("active", k===tab);
+  });
+  if(tab==="list") renderAdminSakeList();
+  if(tab==="settings"){
+    const s = getSettings();
+    document.getElementById("settingAffiliateTag").value = s.affiliateTag;
+    document.getElementById("settingWorkerUrl").value = s.workerUrl;
+    document.getElementById("settingRakutenAppId").value = s.rakutenAppId;
+    document.getElementById("settingRakutenAffiliateId").value = s.rakutenAffiliateId;
+    document.getElementById("settingRakutenWorkerUrl").value = s.rakutenWorkerUrl;
+  }
+}
+
+function renderAdminSakeList(){
+  const box = document.getElementById("adminSakeList");
+  box.innerHTML = SAKE_DATA.map(s=>`
+    <div class="reviewItem" style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-weight:700;font-size:13px;">${s.name}</div>
+        <div style="font-size:10.5px;color:#8a8072;">${s.brewery} ・ ¥${s.price.toLocaleString()}</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="voteBtn" onclick="openSakeForm('${s.id}')">編集</button>
+        <button class="voteBtn" onclick="deleteSakeItem('${s.id}')">削除</button>
+      </div>
+    </div>`).join("");
+}
+
+function slugify(str){
+  return String(str).toLowerCase().replace(/[^a-z0-9一-龠ぁ-んァ-ヶー]+/g,"-").replace(/^-+|-+$/g,"") || ("item-"+Date.now());
+}
+
+function openSakeForm(id){
+  const sake = id ? SAKE_DATA.find(s=>s.id===id) : null;
+  document.getElementById("sakeFormTitle").textContent = sake ? "銘柄を編集" : "銘柄を追加";
+  const pairingText = sake ? sake.pairing.map(p=>`${p.food} :: ${p.why}`).join("\n") : "";
+  const sourcesText = sake ? sake.sources.map(s=>`${s.title} :: ${s.url}`).join("\n") : "";
+  const sc = sake ? sake.scores : {sweetness:2.5,body:2.5,acidity:2.5,aroma:2.5,umami:2.5,difficulty:1.0};
+
+  document.getElementById("sakeFormFields").innerHTML = `
+    <input type="hidden" id="f_id" value="${sake?sake.id:""}">
+    <div class="field"><div class="fieldLabel">銘柄名</div><input class="textInput" id="f_name" value="${sake?escapeHTML(sake.name):""}"></div>
+    <div class="field"><div class="fieldLabel">ローマ字名</div><input class="textInput" id="f_nameRomaji" value="${sake?escapeHTML(sake.nameRomaji):""}"></div>
+    <div class="field"><div class="fieldLabel">蔵元名</div><input class="textInput" id="f_brewery" value="${sake?escapeHTML(sake.brewery):""}"></div>
+    <div class="field"><div class="fieldLabel">産地（都道府県）</div><input class="textInput" id="f_prefecture" value="${sake?escapeHTML(sake.prefecture):""}"></div>
+    <div class="field"><div class="fieldLabel">種別</div>
+      <select class="textInput" id="f_type">
+        ${TYPE_TIERS.filter(k=>k!=="all").map(k=>`<option value="${k}" ${sake&&sake.type===k?"selected":""}>${t("type_"+k)}</option>`).join("")}
+      </select>
+    </div>
+    <div class="field"><div class="fieldLabel">精米歩合(%)</div><input class="textInput" type="number" id="f_seimaibuai" value="${sake?sake.seimaibuai:55}"></div>
+    <div class="field"><div class="fieldLabel">価格（円）</div><input class="textInput" type="number" id="f_price" value="${sake?sake.price:3000}"></div>
+    <div class="field"><div class="fieldLabel">スコア（0〜5、0.1刻み可）</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        ${["sweetness","body","acidity","aroma","umami","difficulty"].map(a=>`
+          <div><div style="font-size:10px;color:#8a8072;">${t("axis_"+a)}</div>
+          <input class="textInput" type="number" min="0" max="5" step="0.1" id="f_score_${a}" value="${sc[a]}"></div>`).join("")}
+      </div>
+    </div>
+    <div class="field"><div class="fieldLabel">味わいタグ（カンマ区切り）</div><input class="textInput" id="f_flavorTags" value="${sake?sake.flavorTags.join(", "):""}"></div>
+    <div class="field"><div class="fieldLabel">この酒について</div><textarea class="textArea" id="f_history">${sake?escapeHTML(sake.history):""}</textarea></div>
+    <div class="field"><div class="fieldLabel">蔵元について</div><textarea class="textArea" id="f_breweryHistory">${sake?escapeHTML(sake.breweryHistory):""}</textarea></div>
+    <div class="field"><div class="fieldLabel">合うおつまみ（1行1件、「料理名 :: なぜ合うか」の形式）</div><textarea class="textArea" id="f_pairing" placeholder="だし巻き卵 :: 出汁の旨味と吟醸香が寄り添う">${escapeHTML(pairingText)}</textarea></div>
+    <div class="field"><div class="fieldLabel">参考・引用元（1行1件、「タイトル :: URL」の形式）</div><textarea class="textArea" id="f_sources" placeholder="〇〇酒造 公式サイト :: https://...">${escapeHTML(sourcesText)}</textarea></div>
+    <div class="field"><div class="fieldLabel">絵文字（画像未接続時のアイコン）</div><input class="textInput" id="f_emoji" value="${sake?sake.emoji:"🍶"}"></div>
+    <div class="field"><div class="fieldLabel">カード背景（CSS gradient）</div><input class="textInput" id="f_color" value="${sake?sake.color:"linear-gradient(160deg,#3d5f80,#263b52)"}"></div>
+    <div class="field"><div class="fieldLabel">Amazon検索キーワード</div><input class="textInput" id="f_amazonQuery" value="${sake?escapeHTML(sake.amazonQuery):""}"></div>
+  `;
+  document.getElementById("sakeFormMask").classList.add("open");
+}
+function closeSakeForm(){ document.getElementById("sakeFormMask").classList.remove("open"); }
+
+function saveSakeForm(){
+  const val = idv => document.getElementById(idv).value;
+  const name = val("f_name").trim();
+  if(!name){ showToast("銘柄名を入力してください"); return; }
+  const existingId = val("f_id");
+  const id = existingId || slugify(name);
+  const brewery = val("f_brewery").trim();
+  const existing = SAKE_DATA.find(s=>s.id===id);
+  const breweryId = existing ? existing.breweryId : slugify(brewery);
+
+  const parseLines = (text, keys)=> text.split("\n").map(l=>l.trim()).filter(Boolean).map(l=>{
+    const [a,b] = l.split("::").map(x=>x?x.trim():"");
+    const obj = {}; obj[keys[0]] = a||""; obj[keys[1]] = b||""; return obj;
+  });
+
+  const sake = {
+    id, name,
+    nameRomaji: val("f_nameRomaji").trim(),
+    breweryId, brewery,
+    breweryRomaji: existing ? existing.breweryRomaji : "",
+    prefecture: val("f_prefecture").trim(),
+    type: val("f_type"),
+    seimaibuai: Number(val("f_seimaibuai"))||0,
+    price: Number(val("f_price"))||0,
+    scores: {
+      sweetness: Number(val("f_score_sweetness")),
+      body: Number(val("f_score_body")),
+      acidity: Number(val("f_score_acidity")),
+      aroma: Number(val("f_score_aroma")),
+      umami: Number(val("f_score_umami")),
+      difficulty: Number(val("f_score_difficulty"))
+    },
+    flavorTags: val("f_flavorTags").split(",").map(x=>x.trim()).filter(Boolean),
+    history: val("f_history"),
+    breweryHistory: val("f_breweryHistory"),
+    pairing: parseLines(val("f_pairing"), ["food","why"]),
+    sources: parseLines(val("f_sources"), ["title","url"]),
+    emoji: val("f_emoji").trim() || "🍶",
+    color: val("f_color").trim() || "linear-gradient(160deg,#3d5f80,#263b52)",
+    amazonQuery: val("f_amazonQuery").trim() || name
+  };
+
+  const idx = SAKE_DATA.findIndex(s=>s.id===id);
+  if(idx>=0) SAKE_DATA[idx] = sake; else SAKE_DATA.push(sake);
+  persistSakeData();
+  closeSakeForm();
+  renderAdminSakeList();
+  buildFilters();
+  renderList();
+  showToast("✓ 保存しました");
+}
+
+function deleteSakeItem(id){
+  if(!confirm("この銘柄を削除しますか？")) return;
+  SAKE_DATA = SAKE_DATA.filter(s=>s.id!==id);
+  persistSakeData();
+  renderAdminSakeList();
+  buildFilters();
+  renderList();
+}
+
+function exportSakeJSON(){
+  const blob = new Blob([JSON.stringify(SAKE_DATA, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "sakemiru-backup.json";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importSakeJSON(){
+  const text = document.getElementById("importJsonBox").value.trim();
+  if(!text){ showToast("JSONを貼り付けてください"); return; }
+  try{
+    const parsed = JSON.parse(text);
+    if(!Array.isArray(parsed)) throw new Error("配列形式ではありません");
+    parsed.forEach(item=>{
+      if(!item.id) item.id = slugify(item.name||"item");
+      const idx = SAKE_DATA.findIndex(s=>s.id===item.id);
+      if(idx>=0) SAKE_DATA[idx] = item; else SAKE_DATA.push(item);
+    });
+    persistSakeData();
+    renderAdminSakeList();
+    buildFilters();
+    renderList();
+    showToast("✓ 読み込みました（"+parsed.length+"件）");
+  }catch(e){
+    showToast("JSONの読み込みに失敗しました: "+e.message);
+  }
+}
+
+function saveAdminSettings(){
+  saveSettings({
+    affiliateTag: document.getElementById("settingAffiliateTag").value.trim() || DEFAULT_SETTINGS.affiliateTag,
+    workerUrl: document.getElementById("settingWorkerUrl").value.trim(),
+    rakutenAppId: document.getElementById("settingRakutenAppId").value.trim(),
+    rakutenAffiliateId: document.getElementById("settingRakutenAffiliateId").value.trim(),
+    rakutenWorkerUrl: document.getElementById("settingRakutenWorkerUrl").value.trim()
+  });
+  showToast("✓ 設定を保存しました");
+}
+
+function changeAdminPassword(){
+  const pw = document.getElementById("newAdminPw").value;
+  if(!pw){ showToast("新しいパスワードを入力してください"); return; }
+  localStorage.setItem("sakemiru_admin_pw", pw);
+  document.getElementById("newAdminPw").value = "";
+  showToast("✓ パスワードを変更しました");
+}
+
+/* ---- PA-API 5.0 (SearchItems) を叩くCloudflare Workerのひな形コード ---- */
+const PAAPI_WORKER_CODE = `export default {
+  async fetch(request, env) {
+    if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders() });
+    const url = new URL(request.url);
+    const keywords = url.searchParams.get("keywords") || "";
+    const marketplaceParam = url.searchParams.get("marketplace") || "amazon.co.jp";
+    if (!keywords) {
+      return new Response(JSON.stringify({ error: "keywords required" }), { status: 400, headers: corsHeaders() });
+    }
+
+    const MARKETPLACES = {
+      "amazon.co.jp": { host: "webservices.amazon.co.jp", region: "us-west-2", marketplace: "www.amazon.co.jp" },
+      "amazon.com":   { host: "webservices.amazon.com",   region: "us-east-1", marketplace: "www.amazon.com" }
+    };
+    const mp = MARKETPLACES[marketplaceParam] || MARKETPLACES["amazon.co.jp"];
+
+    const payload = {
+      Keywords: keywords,
+      Resources: ["Images.Primary.Large", "ItemInfo.Title", "Offers.Listings.Price", "DetailPageURL"],
+      PartnerTag: env.AMAZON_PARTNER_TAG,
+      PartnerType: "Associates",
+      Marketplace: mp.marketplace,
+      SearchIndex: "All",
+      ItemCount: 1
+    };
+
+    try {
+      const result = await callPaapi(payload, mp, env, "SearchItems", "/paapi5/searchitems");
+      const item = result && result.SearchResult && result.SearchResult.Items && result.SearchResult.Items[0];
+      if (!item) return new Response(JSON.stringify({ error: "not found" }), { status: 404, headers: corsHeaders() });
+      const out = {
+        title: item.ItemInfo && item.ItemInfo.Title && item.ItemInfo.Title.DisplayValue,
+        image: item.Images && item.Images.Primary && item.Images.Primary.Large && item.Images.Primary.Large.URL,
+        price: item.Offers && item.Offers.Listings && item.Offers.Listings[0] && item.Offers.Listings[0].Price && item.Offers.Listings[0].Price.DisplayAmount,
+        url: item.DetailPageURL
+      };
+      return new Response(JSON.stringify(out), { headers: corsHeaders() });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: corsHeaders() });
+    }
+  }
+};
+
+function corsHeaders() {
+  return { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET,OPTIONS" };
+}
+
+async function callPaapi(payload, mp, env, target, path) {
+  const body = JSON.stringify(payload);
+  const service = "ProductAdvertisingAPI";
+  const method = "POST";
+  const amzTarget = "com.amazon.paapi5.v1.ProductAdvertisingAPIv1." + target;
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]|\\.\\d{3}/g, "");
+  const dateStamp = amzDate.slice(0, 8);
+
+  const canonicalHeaders =
+    "content-encoding:amz-1.0\\n" +
+    "content-type:application/json; charset=utf-8\\n" +
+    "host:" + mp.host + "\\n" +
+    "x-amz-date:" + amzDate + "\\n" +
+    "x-amz-target:" + amzTarget + "\\n";
+  const signedHeaders = "content-encoding;content-type;host;x-amz-date;x-amz-target";
+
+  const payloadHash = await sha256Hex(body);
+  const canonicalRequest = [method, path, "", canonicalHeaders, signedHeaders, payloadHash].join("\\n");
+  const credentialScope = dateStamp + "/" + mp.region + "/" + service + "/aws4_request";
+  const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credentialScope, await sha256Hex(canonicalRequest)].join("\\n");
+
+  const kDate = await hmac("AWS4" + env.AMAZON_SECRET_KEY, dateStamp);
+  const kRegion = await hmac(kDate, mp.region);
+  const kService = await hmac(kRegion, service);
+  const kSigning = await hmac(kService, "aws4_request");
+  const signature = toHex(await hmac(kSigning, stringToSign));
+
+  const authorization = "AWS4-HMAC-SHA256 Credential=" + env.AMAZON_ACCESS_KEY + "/" + credentialScope +
+    ", SignedHeaders=" + signedHeaders + ", Signature=" + signature;
+
+  const res = await fetch("https://" + mp.host + path, {
+    method,
+    headers: {
+      "content-encoding": "amz-1.0",
+      "content-type": "application/json; charset=utf-8",
+      "host": mp.host,
+      "x-amz-date": amzDate,
+      "x-amz-target": amzTarget,
+      "Authorization": authorization
+    },
+    body
+  });
+  if (!res.ok) throw new Error("PA-API error " + res.status + ": " + (await res.text()));
+  return res.json();
+}
+
+async function sha256Hex(message) {
+  const data = new TextEncoder().encode(message);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return toHex(hash);
+}
+function toHex(buffer) {
+  return [...new Uint8Array(buffer)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+async function hmac(key, message) {
+  const keyData = typeof key === "string" ? new TextEncoder().encode(key) : key;
+  const cryptoKey = await crypto.subtle.importKey("raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(message));
+}
+`;
+
+function showWorkerCode(){
+  document.getElementById("workerCodeBox").value = PAAPI_WORKER_CODE;
+  document.getElementById("workerCodeMask").classList.add("open");
+}
+function copyWorkerCode(){
+  const box = document.getElementById("workerCodeBox");
+  box.select();
+  navigator.clipboard.writeText(box.value);
+  showToast("✓ コピーしました");
+}
+
+/* ---- 楽天市場API（商品検索API）用の軽量中継Worker。署名不要でAmazon版より遥かにシンプル ---- */
+const RAKUTEN_WORKER_CODE = `export default {
+  async fetch(request) {
+    if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders() });
+    const url = new URL(request.url);
+    const keywords = url.searchParams.get("keywords") || "";
+    const applicationId = url.searchParams.get("applicationId") || "";
+    const affiliateId = url.searchParams.get("affiliateId") || "";
+    if (!keywords || !applicationId) {
+      return new Response(JSON.stringify({ error: "keywords and applicationId required" }), { status: 400, headers: corsHeaders() });
+    }
+
+    const api = new URL("https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601");
+    api.searchParams.set("format", "json");
+    api.searchParams.set("keyword", keywords);
+    api.searchParams.set("applicationId", applicationId);
+    if (affiliateId) api.searchParams.set("affiliateId", affiliateId);
+    api.searchParams.set("hits", "1");
+
+    try {
+      const res = await fetch(api.toString());
+      if (!res.ok) return new Response(JSON.stringify({ error: "rakuten api error " + res.status }), { status: 502, headers: corsHeaders() });
+      const data = await res.json();
+      const item = data.Items && data.Items[0] && data.Items[0].Item;
+      if (!item) return new Response(JSON.stringify({ error: "not found" }), { status: 404, headers: corsHeaders() });
+      const out = {
+        title: item.itemName,
+        image: item.mediumImageUrls && item.mediumImageUrls[0] && item.mediumImageUrls[0].imageUrl,
+        price: item.itemPrice ? ("¥" + Number(item.itemPrice).toLocaleString()) : undefined,
+        url: item.affiliateUrl || item.itemUrl
+      };
+      return new Response(JSON.stringify(out), { headers: corsHeaders() });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: corsHeaders() });
+    }
+  }
+};
+
+function corsHeaders() {
+  return { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET,OPTIONS" };
+}
+`;
+function showRakutenWorkerCode(){
+  document.getElementById("workerCodeBox").value = RAKUTEN_WORKER_CODE;
+  document.getElementById("workerCodeMask").classList.add("open");
+}
+
+/* =========================================================
+   11. 初期化
+   ========================================================= */
+document.addEventListener("DOMContentLoaded", ()=>{
+  initLangSelect();
+  applyStaticI18n();
+  buildFilters();
+  renderList();
+  if(isAdminUnlocked()) document.getElementById("adminEntryBtn").style.display = "block";
+});
+</script>
+</body>
+</html>
