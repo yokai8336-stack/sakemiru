@@ -7,6 +7,7 @@
 <title>サケミル｜日本酒が気になり始めたら</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* =========================================================
    サケミル / SAKEMIRU
@@ -388,6 +389,22 @@ input[type=range]{width:100%;accent-color:#263b52;}
       </div>
 
       <div id="adminTab-settings" style="display:none;">
+        <div class="sectionTitle" style="margin-bottom:6px;">🗄️ データベース管理者ログイン</div>
+        <div class="bodyText" style="margin-bottom:8px;">ここでログインしている間だけ、銘柄の追加・編集・削除が全員に反映されるデータベースに保存されます。未ログインの場合はこの端末だけの保存になります。</div>
+        <div class="field">
+          <div class="fieldLabel">メールアドレス</div>
+          <input class="textInput" id="supaLoginEmail" type="email">
+        </div>
+        <div class="field">
+          <div class="fieldLabel">パスワード</div>
+          <input class="textInput" id="supaLoginPassword" type="password">
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <button class="modalBtn primary" style="flex:1;" onclick="sakemiruSignIn()">ログイン</button>
+          <button class="modalBtn ghost" style="flex:1;" onclick="sakemiruSignOut()">ログアウト</button>
+        </div>
+        <div id="supaAuthStatus" class="bodyText" style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #eadfc7;">未ログイン</div>
+
         <div class="sectionTitle" style="margin-bottom:6px;">🔴 楽天（すぐに使える）</div>
         <div class="field">
           <div class="fieldLabel">楽天ウェブサービス アプリID</div>
@@ -674,6 +691,142 @@ function saveSettings(s){
   localStorage.setItem("sakemiru_settings", JSON.stringify(s));
 }
 
+/* =========================================================
+   1.5 Supabase 連携
+   全員に見える形で日本酒データを管理するためのデータベース。
+   閲覧は誰でも可能、追加・編集・削除は管理者ログイン時のみ。
+   ========================================================= */
+const SUPABASE_URL = "https://shblhsbcnmdengmbbpmx.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNoYmxoc2Jjbm1kZW5nbWJicG14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5OTcxOTMsImV4cCI6MjEwMjU3MzE5M30.Tv2hmRucmBztILkBOhRO94Tg-EqqVle5d2zInCIaIIk";
+const SAKEMIRU_ADMIN_EMAIL = "yokai8336@gmail.com"; // ← 管理者として書き込みを許可するメールアドレス
+
+const supabaseClient = (typeof window.supabase !== "undefined")
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+let currentUser = null;
+let sakemiruIsAdmin = false;
+
+async function initSupabaseAuth(){
+  if(!supabaseClient) return;
+  const { data:{ session } } = await supabaseClient.auth.getSession();
+  currentUser = session ? session.user : null;
+  sakemiruIsAdmin = !!(currentUser && String(currentUser.email||"").trim().toLowerCase() === SAKEMIRU_ADMIN_EMAIL);
+  supabaseClient.auth.onAuthStateChange((event, session)=>{
+    currentUser = session ? session.user : null;
+    sakemiruIsAdmin = !!(currentUser && String(currentUser.email||"").trim().toLowerCase() === SAKEMIRU_ADMIN_EMAIL);
+    updateSupabaseAuthUI();
+  });
+  updateSupabaseAuthUI();
+}
+
+async function sakemiruSignIn(){
+  if(!supabaseClient) return;
+  const email = document.getElementById("supaLoginEmail").value.trim();
+  const password = document.getElementById("supaLoginPassword").value;
+  if(!email || !password){ showToast("メールアドレスとパスワードを入力してください"); return; }
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if(error){ showToast("ログイン失敗: "+error.message); return; }
+  showToast("✓ ログインしました");
+  refreshSakeDataFromSupabase();
+}
+
+async function sakemiruSignOut(){
+  if(!supabaseClient) return;
+  await supabaseClient.auth.signOut();
+  showToast("ログアウトしました");
+}
+
+function updateSupabaseAuthUI(){
+  const statusEl = document.getElementById("supaAuthStatus");
+  if(!statusEl) return;
+  if(currentUser){
+    statusEl.textContent = sakemiruIsAdmin
+      ? `✓ 管理者としてログイン中（${currentUser.email}）`
+      : `ログイン中（${currentUser.email}）※管理者ではありません`;
+  }else{
+    statusEl.textContent = "未ログイン（この状態だとDBには保存されず、この端末のみに保存されます）";
+  }
+}
+
+/* 行データ ⇄ サイト内部で使うオブジェクト形式の変換 */
+function sakeRowToObject(row){
+  return {
+    id: row.id,
+    name: row.name || "",
+    nameRomaji: row.name_romaji || "",
+    breweryId: row.brewery_id || "",
+    brewery: row.brewery || "",
+    breweryRomaji: row.brewery_romaji || "",
+    prefecture: row.prefecture || "",
+    type: row.type || "",
+    seimaibuai: Number(row.seimaibuai) || 0,
+    price: Number(row.price) || 0,
+    scores: row.scores || {sweetness:0,body:0,acidity:0,aroma:0,umami:0,difficulty:0},
+    flavorTags: Array.isArray(row.flavor_tags) ? row.flavor_tags : [],
+    history: row.history || "",
+    breweryHistory: row.brewery_history || "",
+    pairing: Array.isArray(row.pairing) ? row.pairing : [],
+    sources: Array.isArray(row.sources) ? row.sources : [],
+    amazonQuery: row.amazon_query || row.name || "",
+    emoji: row.emoji || "🍶",
+    color: row.color || "linear-gradient(160deg,#3d5f80,#263b52)"
+  };
+}
+function sakeObjectToRow(s){
+  return {
+    id: s.id,
+    name: s.name,
+    name_romaji: s.nameRomaji,
+    brewery_id: s.breweryId,
+    brewery: s.brewery,
+    brewery_romaji: s.breweryRomaji,
+    prefecture: s.prefecture,
+    type: s.type,
+    seimaibuai: s.seimaibuai,
+    price: s.price,
+    scores: s.scores,
+    flavor_tags: s.flavorTags,
+    history: s.history,
+    brewery_history: s.breweryHistory,
+    pairing: s.pairing,
+    sources: s.sources,
+    amazon_query: s.amazonQuery,
+    emoji: s.emoji,
+    color: s.color,
+    updated_at: new Date().toISOString()
+  };
+}
+
+/* Supabaseから全銘柄を読み込み、成功すればSAKE_DATAを差し替えて再描画する。
+   未接続・失敗時は何もしない（ローカルのデータのまま動き続ける）。 */
+async function refreshSakeDataFromSupabase(){
+  if(!supabaseClient) return;
+  try{
+    const { data, error } = await supabaseClient.from("sake").select("*").order("created_at",{ascending:true});
+    if(error){ console.warn("sake table load error:", error); return; }
+    if(!data || data.length===0) return; // まだ1件もない場合はデフォルトのまま表示
+    SAKE_DATA = data.map(sakeRowToObject);
+    localStorage.setItem("sakemiru_sake_data", JSON.stringify(SAKE_DATA));
+    buildFilters();
+    renderList();
+  }catch(e){ console.error("sake table load exception:", e); }
+}
+
+/* 管理者ログイン時のみDBへ書き込む。未ログインならこの端末のみに保存。 */
+async function saveSakeToSupabase(sake){
+  if(!supabaseClient || !sakemiruIsAdmin) return {ok:false};
+  const { error } = await supabaseClient.from("sake").upsert(sakeObjectToRow(sake), {onConflict:"id"});
+  if(error){ showToast("DB保存エラー: "+error.message); return {ok:false,error}; }
+  return {ok:true};
+}
+async function deleteSakeFromSupabase(id){
+  if(!supabaseClient || !sakemiruIsAdmin) return {ok:false};
+  const { error } = await supabaseClient.from("sake").delete().eq("id", id);
+  if(error){ showToast("DB削除エラー: "+error.message); return {ok:false,error}; }
+  return {ok:true};
+}
+
 let currentLang = "ja";
 
 /* =========================================================
@@ -920,21 +1073,46 @@ function filteredSake(){
 /* =========================================================
    5. 一覧描画
    ========================================================= */
-function renderList(){
+let renderListToken = 0;
+async function renderList(){
   const area = document.getElementById("listArea");
   const items = filteredSake();
   if(items.length===0){
-    area.innerHTML = `<div class="emptyState">🔍<br>${t("noReviews")==="" ? "" : ""}</div>`;
     area.innerHTML = `<div class="emptyState">🔍</div>`;
     return;
   }
-  area.innerHTML = items.map(cardHTML).join("");
+
+  const {rakutenWorkerUrl, rakutenAppId, workerUrl} = getSettings();
+  const apiConfigured = !!((rakutenWorkerUrl && rakutenAppId) || workerUrl);
+
+  /* APIが未接続のうちは、これまで通り全件を自作アイコンで表示する
+     （ここで絞り込むと、設定前は一覧が空っぽになってしまうため） */
+  if(!apiConfigured){
+    area.innerHTML = items.map(s=>cardHTML(s, null)).join("");
+    return;
+  }
+
+  const token = ++renderListToken;
+  area.innerHTML = `<div class="emptyState">画像を確認中…</div>`;
+  const results = await Promise.all(items.map(async s=>({sake:s, data: await fetchProductImage(s)})));
+  if(token !== renderListToken) return; // 検索・絞り込み中に新しい描画が走った場合は古い結果を捨てる
+
+  const withImage = results.filter(r=>r.data && r.data.image);
+  if(withImage.length===0){
+    area.innerHTML = `<div class="emptyState">🔍<br>画像を取得できた商品がありません</div>`;
+    return;
+  }
+  area.innerHTML = withImage.map(r=>cardHTML(r.sake, r.data)).join("");
 }
 
-function cardHTML(s){
+function cardHTML(s, data){
+  const hasPhoto = !!(data && data.image);
+  const imgStyle = hasPhoto
+    ? `background-image:url('${data.image}');background-size:cover;background-position:center;`
+    : `background:${s.color}`;
   return `
   <div class="card" onclick="openDetail('${s.id}')">
-    <div class="cardImg" style="background:${s.color}">${s.emoji}</div>
+    <div class="cardImg" style="${imgStyle}">${hasPhoto ? "" : s.emoji}</div>
     <div class="cardBody">
       <div class="cardTop">
         <div>
@@ -1056,6 +1234,44 @@ async function tryFetchRakutenData(sake){
     if(!data) return;
     applyProductData(sake, data, "rakuten");
   }catch(e){ /* 取得できなくても表示は自作アイコンのまま継続 */ }
+}
+
+/* 一覧画面用: 画像が取得できた商品だけを表示するためのキャッシュ付き取得関数。
+   楽天→Amazonの順で試し、画像URLが取れたデータだけを返す（取れなければnull）。
+   同じ銘柄は一度取得したら使い回す（設定変更時は clearProductImageCache() でリセット）。 */
+const productImageCache = {};
+function clearProductImageCache(){
+  Object.keys(productImageCache).forEach(k=>delete productImageCache[k]);
+}
+function fetchProductImage(sake){
+  if(productImageCache[sake.id]) return productImageCache[sake.id];
+  const promise = (async ()=>{
+    const {rakutenWorkerUrl, rakutenAppId, rakutenAffiliateId, workerUrl} = getSettings();
+    if(rakutenWorkerUrl && rakutenAppId){
+      try{
+        const url = `${rakutenWorkerUrl}?keywords=${encodeURIComponent(sake.amazonQuery)}&applicationId=${encodeURIComponent(rakutenAppId)}&affiliateId=${encodeURIComponent(rakutenAffiliateId||"")}`;
+        const res = await fetch(url);
+        if(res.ok){
+          const data = await res.json();
+          if(data && data.image) return data;
+        }
+      }catch(e){ /* 楽天で失敗しても次にAmazonを試す */ }
+    }
+    if(workerUrl){
+      try{
+        const domain = AMAZON_DOMAIN[currentLang] || "amazon.co.jp";
+        const url = `${workerUrl}?keywords=${encodeURIComponent(sake.amazonQuery)}&marketplace=${domain}`;
+        const res = await fetch(url);
+        if(res.ok){
+          const data = await res.json();
+          if(data && data.image) return data;
+        }
+      }catch(e){ /* 両方失敗したら画像なし扱い */ }
+    }
+    return null;
+  })();
+  productImageCache[sake.id] = promise;
+  return promise;
 }
 
 function applyProductData(sake, data, source){
@@ -1519,7 +1735,14 @@ function saveSakeForm(){
   renderAdminSakeList();
   buildFilters();
   renderList();
-  showToast("✓ 保存しました");
+
+  if(supabaseClient && sakemiruIsAdmin){
+    saveSakeToSupabase(sake).then(r=>{
+      showToast(r.ok ? "✓ DBに保存しました（全員に反映されます）" : "✓ この端末に保存（DB保存は失敗）");
+    });
+  }else{
+    showToast(supabaseClient ? "✓ この端末に保存（DBに反映するには管理者ログインが必要）" : "✓ 保存しました");
+  }
 }
 
 function deleteSakeItem(id){
@@ -1529,6 +1752,12 @@ function deleteSakeItem(id){
   renderAdminSakeList();
   buildFilters();
   renderList();
+
+  if(supabaseClient && sakemiruIsAdmin){
+    deleteSakeFromSupabase(id).then(r=>{
+      showToast(r.ok ? "✓ DBからも削除しました" : "この端末からのみ削除（DB削除は失敗）");
+    });
+  }
 }
 
 function exportSakeJSON(){
@@ -1569,6 +1798,8 @@ function saveAdminSettings(){
     rakutenAffiliateId: document.getElementById("settingRakutenAffiliateId").value.trim(),
     rakutenWorkerUrl: document.getElementById("settingRakutenWorkerUrl").value.trim()
   });
+  clearProductImageCache();
+  renderList();
   showToast("✓ 設定を保存しました");
 }
 
@@ -1757,6 +1988,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
   buildFilters();
   renderList();
   if(isAdminUnlocked()) document.getElementById("adminEntryBtn").style.display = "block";
+  initSupabaseAuth();
+  refreshSakeDataFromSupabase();
 });
 </script>
 </body>
