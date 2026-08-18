@@ -107,7 +107,7 @@ a{color:inherit;text-decoration:none;}
   box-shadow:0 2px 6px rgba(50,40,30,.18);flex:none;
 }
 .cardImg{
-  width:104px;height:138px;border-radius:12px;flex:none;
+  width:104px;height:138px;border-radius:12px;flex:none;position:relative;
   display:flex;align-items:center;justify-content:center;font-size:38px;
   box-shadow:0 4px 12px rgba(50,40,30,.12);
 }
@@ -133,6 +133,7 @@ a{color:inherit;text-decoration:none;}
 }
 .cardMeta{display:flex;justify-content:space-between;align-items:center;margin-top:9px;}
 .cardPrice{font-size:13px;font-weight:800;}
+.nomitaiBadge{font-size:10.5px;color:#a8622b;font-weight:700;}
 
 /* ===== DETAIL OVERLAY (ヘッダー見切れ対策: 独立フルスクリーンレイヤー) ===== */
 .detailLayer{
@@ -197,6 +198,12 @@ a{color:inherit;text-decoration:none;}
 .miniCard{
   flex:none;width:126px;background:#fffdf9;border:1px solid #eadfc7;border-radius:12px;padding:9px;
 }
+.miniCard.isSelf{background:#fff3de;border:2px solid #b8892b;}
+.miniGrade{
+  display:inline-block;font-size:8.5px;background:#eef2ee;color:#3d6b52;border-radius:5px;
+  padding:1px 5px;margin-top:2px;
+}
+.miniCard.isSelf .miniGrade{background:#b8892b;color:#fffdf9;}
 .miniImg{width:100%;height:92px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:6px;background-size:cover;background-position:center;}
 .miniName{font-size:11px;font-weight:700;line-height:1.4;}
 .miniSub{font-size:9.5px;color:#8a8072;margin-top:2px;}
@@ -316,6 +323,8 @@ input[type=range]{width:100%;accent-color:#263b52;}
     <div class="filterRow" id="typeFilterRow"></div>
     <div class="filterLabel" data-i18n="filterFlavor">味わい</div>
     <div class="filterRow" id="flavorFilterRow"></div>
+    <div class="filterLabel" data-i18n="sortLabel">並び替え</div>
+    <div class="filterRow" id="sortFilterRow"></div>
   </div>
 
   <div class="hero">
@@ -374,7 +383,7 @@ input[type=range]{width:100%;accent-color:#263b52;}
   <div class="modalMask" id="adminLoginMask">
     <div class="modalBox">
       <div class="modalTitle" id="adminLoginTitle" data-i18n="loginTitle">🔑 ログイン</div>
-      <p class="bodyText" id="adminLoginHint" style="margin-bottom:10px;" data-i18n="loginHint">ログインすると、お気に入りや口コミの投稿が使えるようになります。</p>
+      <p class="bodyText" id="adminLoginHint" style="margin-bottom:10px;" data-i18n="loginHint">ログインすると、ノミタイや口コミの投稿が使えるようになります。</p>
       <div class="field">
         <div class="fieldLabel" data-i18n="emailLabel">メールアドレス</div>
         <input class="textInput" id="adminLoginEmail" type="email" placeholder="example@mail.com">
@@ -418,7 +427,7 @@ input[type=range]{width:100%;accent-color:#263b52;}
 
       <div id="adminTab-list">
         <button class="modalBtn primary" style="margin-bottom:10px;" onclick="openSakeForm(null)">＋ 新規銘柄を追加</button>
-        <button class="modalBtn ghost" style="margin-bottom:12px;" onclick="showAddSakePrompt()">📋 新しい銘柄の調査プロンプトを発行（10件ずつ）</button>
+        <button class="modalBtn ghost" style="margin-bottom:12px;" onclick="showAddSakePrompt()">📋 新しい銘柄の調査プロンプトを発行（5件ずつ）</button>
         <div id="adminSakeList"></div>
       </div>
 
@@ -540,7 +549,7 @@ const I18N = {
   reviewTextLabel:"コメント", reviewTextPh:"香りや味わいの印象、飲んだシーンなど自由にどうぞ",
   cancel:"キャンセル", submit:"投稿する", close:"閉じる", copy:"コピー",
   loginBtn:"ログイン", myPage:"マイページ", loginTitle:"🔑 ログイン", signupTitle:"✍️ 新規登録",
-  loginHint:"ログインすると、お気に入りや口コミの投稿が使えるようになります。", signupHint:"メールアドレスとパスワード（6文字以上）でアカウントを作成します。",
+  loginHint:"ログインすると、ノミタイや口コミの投稿が使えるようになります。", signupHint:"メールアドレスとパスワード（6文字以上）でアカウントを作成します。",
   emailLabel:"メールアドレス", passwordLabel:"パスワード（6文字以上）", loginSubmit:"ログイン", signupSubmit:"登録する",
   switchToSignup:"アカウントを新規登録する", switchToLogin:"すでにアカウントをお持ちの方はこちら",
   myPageTitle:"👤 マイページ", logoutBtn:"ログアウトする",
@@ -553,8 +562,11 @@ const I18N = {
   votePrefix:"評価に投票：", polishRate:"精米歩合", prefecture:"産地", price:"価格",
   addSakeModalTitle:"新規銘柄 追加用プロンプト",
   addSakeModalBody:"下のテキストをコピーし、新しいClaudeの会話に貼り付けてください。実在する日本酒を調べ、このサイトのJSON形式でデータを作成してくれます。",
-  amazonNote:"※商品画像は楽天市場APIまたはAmazon公式API（PA-API）を通じて取得する仕組みです。管理画面でAPIが未接続の間は自作アイコンで代替表示しています。",
-  wikiTitle:"Wikipediaで調べる"
+  amazonNote:"※商品画像は事前に実在確認した画像を固定表示しています。価格・購入リンクは楽天APIから毎回自動的に最新の値を取得します（Amazon側はPA-API接続時のみ）。",
+  wikiTitle:"Wikipediaで調べる",
+  sec_ranking:"🔥 ノミタイ・ランキング", nomitaiCountSuffix:"人がノミタイ",
+  sortLabel:"並び替え", sort_default:"おすすめ順", sort_nomitai:"ノミタイが多い順",
+  sort_priceAsc:"価格が安い順", sort_priceDesc:"価格が高い順"
 },
 "en":{
   brandName:"SAKE<span>MIRU</span>", brandSub:"Where curiosity about sake begins",
@@ -589,8 +601,11 @@ const I18N = {
   votePrefix:"Vote on this rating:", polishRate:"Polishing ratio", prefecture:"Region", price:"Price",
   addSakeModalTitle:"New bottle research prompt",
   addSakeModalBody:"Copy the text below and paste it into a new Claude conversation. It will research a real sake and return data in this site's JSON format.",
-  amazonNote:"Product images are fetched via the Rakuten Ichiba API or Amazon's official Product Advertising API. Until an API is connected in admin settings, a drawn placeholder icon is shown instead.",
-  wikiTitle:"Look up on Wikipedia"
+  amazonNote:"Product images are fixed to a manually verified photo. Price and purchase links are automatically refreshed from the Rakuten API every time (Amazon links only when PA-API is connected).",
+  wikiTitle:"Look up on Wikipedia",
+  sec_ranking:"🔥 Most wanted to drink", nomitaiCountSuffix:" want to try this",
+  sortLabel:"Sort by", sort_default:"Recommended", sort_nomitai:"Most wanted to drink",
+  sort_priceAsc:"Price: low to high", sort_priceDesc:"Price: high to low"
 },
 "zh-CN":{
   brandName:"清酒<span>镜</span>", brandSub:"当你开始对日本酒感兴趣时",
@@ -772,8 +787,11 @@ const supabaseClient = (typeof window.supabase !== "undefined")
 
 let currentUser = null;
 let sakemiruIsAdmin = false;
-/* お気に入り（ログイン必須。未ログイン時は空のまま＝ゲストモード） */
+/* ノミタイ（旧お気に入り。ログイン必須。未ログイン時は空のまま＝ゲストモード） */
 let liked = [];
+/* ノミタイ数ランキング用：全ユーザー分の集計。銘柄IDごとの人数を保持し、
+   ログインしていないゲストにもランキング・件数は表示する */
+let nomitaiCounts = {};
 
 async function initSupabaseAuth(){
   if(!supabaseClient) return;
@@ -791,11 +809,13 @@ async function initSupabaseAuth(){
       renderList();
     }
   });
-  if(currentUser){ await loadUserFavorites(); renderList(); }
+  if(currentUser){ await loadUserFavorites(); }
+  await loadNomitaiCounts();
+  renderList();
   updateSupabaseAuthUI();
 }
 
-/* ログイン中ユーザーのお気に入りをSupabaseから取得 */
+/* ログイン中ユーザーのお気に入り（ノミタイ）をSupabaseから取得 */
 async function loadUserFavorites(){
   if(!supabaseClient || !currentUser){ liked = []; return; }
   const { data, error } = await supabaseClient
@@ -805,6 +825,19 @@ async function loadUserFavorites(){
   if(error){ console.error("loadUserFavorites:", error); liked = []; return; }
   liked = (data || []).map(row=>row.sake_id);
 }
+
+/* 全ユーザー分のノミタイ数を銘柄ごとに集計（ランキング・件数表示用。ログイン不要） */
+async function loadNomitaiCounts(){
+  if(!supabaseClient){ nomitaiCounts = {}; return; }
+  const { data, error } = await supabaseClient
+    .from("favorites")
+    .select("sake_id");
+  if(error){ console.error("loadNomitaiCounts:", error); return; }
+  const counts = {};
+  (data || []).forEach(row=>{ counts[row.sake_id] = (counts[row.sake_id]||0) + 1; });
+  nomitaiCounts = counts;
+}
+function nomitaiCount(id){ return nomitaiCounts[id] || 0; }
 
 async function sakemiruSignOut(){
   if(!supabaseClient) return;
@@ -1054,7 +1087,13 @@ let voteStore = JSON.parse(localStorage.getItem("sakemiru_votes")||"{}");
   });
   if(changed) localStorage.setItem("sakemiru_reviews", JSON.stringify(reviewsStore));
 })();
-let activeFilters = {price:"all", type:"all", flavor:"all"};
+let activeFilters = {price:"all", type:"all", flavor:"all", sort:"nomitai"};
+const SORT_MODES = [
+  {key:"default", labelKey:"sort_default"},
+  {key:"nomitai", labelKey:"sort_nomitai"},
+  {key:"priceAsc", labelKey:"sort_priceAsc"},
+  {key:"priceDesc", labelKey:"sort_priceDesc"}
+];
 let currentDetailId = null;
 
 /* =========================================================
@@ -1144,6 +1183,13 @@ function buildFilters(){
     const label = f==="all" ? t("typeAll") : f;
     return `<button class="chip ${activeFilters.flavor===f?'active':''}" onclick="setFilter('flavor','${f}')">${label}</button>`;
   }).join("");
+
+  const sortRow = document.getElementById("sortFilterRow");
+  if(sortRow){
+    sortRow.innerHTML = SORT_MODES.map(m=>
+      `<button class="chip ${activeFilters.sort===m.key?'active':''}" onclick="setFilter('sort','${m.key}')">${t(m.labelKey)}</button>`
+    ).join("");
+  }
 }
 
 function setFilter(kind, val){
@@ -1154,7 +1200,7 @@ function setFilter(kind, val){
 
 function filteredSake(){
   const q = (document.getElementById("searchInput").value||"").trim().toLowerCase();
-  return SAKE_DATA.filter(s=>{
+  let items = SAKE_DATA.filter(s=>{
     const tier = PRICE_TIERS.find(p=>p.key===activeFilters.price);
     if(tier && !tier.test(s.price)) return false;
     if(activeFilters.type!=="all" && s.type!==activeFilters.type) return false;
@@ -1165,6 +1211,27 @@ function filteredSake(){
     }
     return true;
   });
+  if(activeFilters.sort==="nomitai"){
+    items.sort((a,b)=>nomitaiCount(b.id)-nomitaiCount(a.id));
+  }else if(activeFilters.sort==="priceAsc"){
+    items.sort((a,b)=>a.price-b.price);
+  }else if(activeFilters.sort==="priceDesc"){
+    items.sort((a,b)=>b.price-a.price);
+  }else if(activeFilters.sort==="default"){
+    /* おすすめ順：自分がノミタイした銘柄がある場合は、それらと味わいが近い順に
+       並べる（すでにノミタイ済みの銘柄自体は除く）。ノミタイが0件のときは
+       比較対象がないため通常の並び順のまま表示する */
+    const likedSake = SAKE_DATA.filter(s=>liked.includes(s.id));
+    if(likedSake.length>0){
+      const scored = items
+        .filter(s=>!liked.includes(s.id))
+        .map(s=>({s, sim: Math.max(...likedSake.map(l=>simPctBetween(l,s)))}));
+      const threshold = scored.filter(x=>x.sim>=40);
+      const pool = threshold.length>0 ? threshold : scored; // 全く近いものが無ければ閾値なしで表示
+      items = pool.sort((a,b)=>b.sim-a.sim).map(x=>x.s);
+    }
+  }
+  return items;
 }
 
 /* =========================================================
@@ -1209,7 +1276,9 @@ function cardHTML(s, data){
     : `background:${s.color}`;
   return `
   <div class="card" onclick="openDetail('${s.id}')">
-    <div class="cardImg" style="${imgStyle}">${hasPhoto ? "" : s.emoji}</div>
+    <div class="cardImg" style="${imgStyle}">${hasPhoto ? "" : s.emoji}
+      <button class="cardFavBtn" style="position:absolute;top:9px;left:9px;" data-fav-id="${s.id}" onclick="toggleFavorite('${s.id}', event)">${isFavorited(s.id) ? "🍶" : "🤍"}</button>
+    </div>
     <div class="cardBody">
       <div class="cardTop">
         <div>
@@ -1228,6 +1297,7 @@ function cardHTML(s, data){
       </div>
       <div class="cardMeta">
         <div class="cardPrice">¥${s.price.toLocaleString()}</div>
+        <div class="nomitaiBadge" data-nomitai-count="${s.id}">🍶 ${nomitaiCount(s.id)}${t("nomitaiCountSuffix")}</div>
       </div>
     </div>
   </div>`;
@@ -1252,16 +1322,17 @@ function displayScore(sake, axis){
    7. 類似銘柄
    ========================================================= */
 const SIM_AXES = ["sweetness","body","acidity","aroma","umami"];
+function simVec(a){ return SIM_AXES.map(k=>displayScore(a,k)); }
+function simPctBetween(a,b){
+  const v0 = simVec(a), v1 = simVec(b);
+  const dist = Math.sqrt(v0.reduce((sum,x,i)=>sum+Math.pow(x-v1[i],2),0));
+  const maxDist = Math.sqrt(SIM_AXES.length*Math.pow(5,2));
+  return Math.round((1-dist/maxDist)*100);
+}
 function similarSake(sake, n=3){
-  const vec = a=>SIM_AXES.map(k=>displayScore(a,k));
-  const v0 = vec(sake);
-  return SAKE_DATA.filter(s=>s.id!==sake.id).map(s=>{
-    const v = vec(s);
-    const dist = Math.sqrt(v0.reduce((sum,x,i)=>sum+Math.pow(x-v[i],2),0));
-    const maxDist = Math.sqrt(SIM_AXES.length*Math.pow(5,2));
-    const simPct = Math.round((1-dist/maxDist)*100);
-    return {sake:s, simPct};
-  }).sort((a,b)=>b.simPct-a.simPct).slice(0,n);
+  return SAKE_DATA.filter(s=>s.id!==sake.id)
+    .map(s=>({sake:s, simPct: simPctBetween(sake,s)}))
+    .sort((a,b)=>b.simPct-a.simPct).slice(0,n);
 }
 
 /* =========================================================
@@ -1324,9 +1395,12 @@ async function tryFetchAmazonData(sake){
    管理画面に設定すると、詳細ページを開いたときに商品画像・価格を自動取得する。
    Amazon PA-APIより先にこちらが成功すればそちらを優先して表示に使う。 */
 async function tryFetchRakutenData(sake){
+  /* 画像は実在確認済みのconfirmedImageを常に優先表示する（自動検索だと
+     ミスマッチ商品の画像に化けることがあるため）。
+     ただし価格・購入リンクは confirmedImage の有無に関わらず、
+     詳細ページを開くたびに楽天APIへ問い合わせて最新の値に自動連携する。 */
   if(sake.confirmedImage){
     applyProductData(sake, {image: sake.confirmedImage}, "rakuten");
-    return;
   }
   const {rakutenWorkerUrl, rakutenAppId, rakutenAffiliateId} = getSettings();
   if(!rakutenWorkerUrl || !rakutenAppId) return;
@@ -1336,7 +1410,9 @@ async function tryFetchRakutenData(sake){
     if(!res.ok) return;
     const data = await res.json(); // 期待する形: {image, price, url, title}
     if(!data) return;
-    if(data.image) data.image = forceHttpsImage(data.image);
+    /* confirmedImageがある場合は画像だけは上書きしない（価格・URLのみ反映） */
+    if(sake.confirmedImage) delete data.image;
+    else if(data.image) data.image = forceHttpsImage(data.image);
     applyProductData(sake, data, "rakuten");
   }catch(e){ /* 取得できなくても表示は自作アイコンのまま継続 */ }
 }
@@ -1428,7 +1504,9 @@ function bulletHTML(text){
 
 
 function detailHTML(sake){
-  const sameBrewery = SAKE_DATA.filter(s=>s.breweryId===sake.breweryId && s.id!==sake.id);
+  const sameBrewery = SAKE_DATA.filter(s=>s.breweryId===sake.breweryId)
+    .slice()
+    .sort((a,b)=>b.price-a.price);
   const similars = similarSake(sake);
   const reviews = getReviews(sake.id);
   const pairing = sakeField(sake,"pairing");
@@ -1441,7 +1519,10 @@ function detailHTML(sake){
       <div class="detailTitleBox">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
           <h2 style="margin:0;">${sakeName(sake)}</h2>
-          <button class="cardFavBtn" style="position:static;flex:none;" data-fav-id="${sake.id}" onclick="toggleFavorite('${sake.id}', event)">${isFavorited(sake.id) ? "❤️" : "🤍"}</button>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:none;">
+            <button class="cardFavBtn" style="position:static;" data-fav-id="${sake.id}" onclick="toggleFavorite('${sake.id}', event)">${isFavorited(sake.id) ? "🍶" : "🤍"}</button>
+            <div class="nomitaiBadge" data-nomitai-count="${sake.id}">🍶 ${nomitaiCount(sake.id)}${t("nomitaiCountSuffix")}</div>
+          </div>
         </div>
         <div class="detailBrewery">${t("prefecture")}: ${sake.prefecture} ・ <a onclick="event.stopPropagation();filterByBrewery('${sake.breweryId}')">${sakeBrewery(sake)}</a></div>
         <div class="factRow">
@@ -1484,16 +1565,20 @@ function detailHTML(sake){
         </div>`).join("")}
     </div>
 
-    ${sameBrewery.length ? `
+    ${sameBrewery.length > 1 ? `
     <div class="section">
       <div class="sectionTitle">${t("sec_sameBrewery")}</div>
       <div class="horizList">
-        ${sameBrewery.map(s=>`
-          <div class="miniCard" onclick="openDetail('${s.id}')">
+        ${sameBrewery.map(s=>{
+          const isSelf = s.id===sake.id;
+          return `
+          <div class="miniCard ${isSelf?'isSelf':''}" onclick="openDetail('${s.id}')">
             <div class="miniImg" style="${s.confirmedImage ? `background-image:url('${s.confirmedImage}');` : `background:${s.color}`}">${s.confirmedImage ? "" : s.emoji}</div>
             <div class="miniName">${sakeName(s)}</div>
             <div class="miniSub">¥${s.price.toLocaleString()}</div>
-          </div>`).join("")}
+            <div class="miniGrade">${t("type_"+s.type)}</div>
+          </div>`;
+        }).join("")}
       </div>
     </div>` : ""}
 
@@ -1655,7 +1740,7 @@ function generateNewSakePrompt(){
   const existing = SAKE_DATA.map(s=>`- ${s.name}（${s.brewery}）`).join("\n");
   return `# サケミル 新規銘柄追加リクエスト
 
-以下のルールに沿って、実在する日本酒をちょうど10件調べ、指定のJSON形式でデータを作成してください。10件に満たない場合や10件を超える場合は出力し直してください。
+以下のルールに沿って、実在する日本酒をちょうど5件調べ、指定のJSON形式でデータを作成してください。5件に満たない場合や5件を超える場合は出力し直してください。
 
 ## すでに登録済みの銘柄（重複させないでください）
 ${existing}
@@ -1812,24 +1897,29 @@ function isFavorited(id){ return liked.includes(id); }
 
 function updateFavoriteButtons(id){
   document.querySelectorAll(`[data-fav-id="${id}"]`).forEach(btn=>{
-    btn.textContent = isFavorited(id) ? "❤️" : "🤍";
+    btn.textContent = isFavorited(id) ? "🍶" : "🤍";
+  });
+  document.querySelectorAll(`[data-nomitai-count="${id}"]`).forEach(el=>{
+    el.textContent = `🍶 ${nomitaiCount(id)}${t("nomitaiCountSuffix")}`;
   });
 }
 
 async function toggleFavorite(id, evt){
   if(evt) evt.stopPropagation();
-  if(!requireLogin("お気に入りに追加するにはログインしてください")) return;
+  if(!requireLogin("ノミタイに追加するにはログインしてください")) return;
 
   if(liked.includes(id)){
     liked = liked.filter(x=>x!==id);
-    showToast("お気に入りから外しました");
+    nomitaiCounts[id] = Math.max(0, (nomitaiCounts[id]||1) - 1);
+    showToast("ノミタイを取り消しました");
     if(supabaseClient){
       const { error } = await supabaseClient.from("favorites").delete().eq("user_id", currentUser.id).eq("sake_id", id);
       if(error) console.error("toggleFavorite delete:", error);
     }
   }else{
     liked.push(id);
-    showToast("❤️ お気に入りに追加しました");
+    nomitaiCounts[id] = (nomitaiCounts[id]||0) + 1;
+    showToast("🍶 ノミタイに追加しました");
     if(supabaseClient){
       const { error } = await supabaseClient.from("favorites").insert({ user_id: currentUser.id, sake_id: id });
       if(error) console.error("toggleFavorite insert:", error);
@@ -1837,6 +1927,7 @@ async function toggleFavorite(id, evt){
   }
 
   updateFavoriteButtons(id);
+  if(activeFilters.sort==="nomitai" || activeFilters.sort==="default") renderList();
 }
 
 function openAdminPanel(){
