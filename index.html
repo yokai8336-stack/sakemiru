@@ -567,6 +567,7 @@ const I18N = {
   ratingsSub:"口コミの評価が、表示スコアの約半分に反映されます",
   difficultyNote:"入手困難度は「定価のまま店頭・通販で買える度合い」を示す独自指標です。数値が高いほど、プレミア化・抽選販売などで定価入手が難しい傾向にあります。",
   votePrefix:"評価に投票：", polishRate:"精米歩合", prefecture:"産地", price:"定価（税込）", taxIncl:"税込",
+  rakutenPrice:"楽天価格", priceReference:"参考価格・税込",
   addSakeModalTitle:"新規銘柄 追加用プロンプト",
   addSakeModalBody:"下のテキストをコピーし、新しいClaudeの会話に貼り付けてください。実在する日本酒を調べ、このサイトのJSON形式でデータを作成してくれます。",
   amazonNote:"※商品画像は事前に実在確認した画像を固定表示しています。価格・購入リンクは楽天APIから毎回自動的に最新の値を取得します（Amazon側はPA-API接続時のみ）。",
@@ -606,6 +607,7 @@ const I18N = {
   ratingsSub:"Reader reviews feed back into roughly half of the displayed score",
   difficultyNote:"Scarcity score reflects how easily this bottle can be bought at its listed retail price. Higher values mean it tends to sell out, go to lottery sales, or trade above retail.",
   votePrefix:"Vote on this rating:", polishRate:"Polishing ratio", prefecture:"Region", price:"Retail Price (tax incl.)", taxIncl:"tax incl.",
+  rakutenPrice:"Rakuten Price", priceReference:"Reference price, tax incl.",
   addSakeModalTitle:"New bottle research prompt",
   addSakeModalBody:"Copy the text below and paste it into a new Claude conversation. It will research a real sake and return data in this site's JSON format.",
   amazonNote:"Product images are fixed to a manually verified photo. Price and purchase links are automatically refreshed from the Rakuten API every time (Amazon links only when PA-API is connected).",
@@ -645,6 +647,7 @@ const I18N = {
   ratingsSub:"用户评价约以一半权重反映到显示分数中",
   difficultyNote:"入手难度指标衡量按标价购买的难易程度。数值越高，代表越容易售罄、需抽签或被溢价交易。",
   votePrefix:"为该评分投票：", polishRate:"精米步合", prefecture:"产地", price:"官方定价（含税）", taxIncl:"含税",
+  rakutenPrice:"乐天价格", priceReference:"参考价格・含税",
   addSakeModalTitle:"新酒款调研提示词",
   addSakeModalBody:"复制下方文本并粘贴到新的Claude对话中，它会调研一款真实日本酒并按本站JSON格式返回数据。",
   amazonNote:"商品图片通过乐天市场API或Amazon官方Product Advertising API获取。管理后台未接入API前，以自绘图标代替显示。",
@@ -681,6 +684,7 @@ const I18N = {
   ratingsSub:"讀者評論約以一半權重反映到顯示分數中",
   difficultyNote:"入手難度衡量按標價購買的容易程度。數值越高，代表越容易售罄、需抽籤或被溢價交易。",
   votePrefix:"為此評分投票：", polishRate:"精米步合", prefecture:"產地", price:"官方定價（含稅）", taxIncl:"含稅",
+  rakutenPrice:"樂天價格", priceReference:"參考價格・含稅",
   addSakeModalTitle:"新酒款調查提示詞",
   addSakeModalBody:"複製下方文字並貼到新的Claude對話中，它會調查一款真實日本酒並依本站JSON格式回傳資料。",
   amazonNote:"商品圖片透過樂天市場API或Amazon官方Product Advertising API取得。管理後台尚未串接API前，以自繪圖示代替顯示。",
@@ -717,6 +721,7 @@ const I18N = {
   ratingsSub:"리뷰 평가가 표시 점수의 약 절반에 반영됩니다",
   difficultyNote:"구매 난이도는 정가 그대로 구매 가능한 정도를 나타내는 독자 지표입니다. 수치가 높을수록 품절·추첨 판매 등으로 정가 구매가 어려운 경향이 있습니다.",
   votePrefix:"평점에 투표:", polishRate:"정미보합", prefecture:"산지", price:"정가(세금 포함)", taxIncl:"세금 포함",
+  rakutenPrice:"라쿠텐 가격", priceReference:"참고 가격・세금 포함",
   addSakeModalTitle:"신규 銘柄 추가 프롬프트",
   addSakeModalBody:"아래 텍스트를 복사해 새 Claude 대화에 붙여넣으세요. 실제 사케를 조사해 이 사이트의 JSON 형식으로 데이터를 만들어 줍니다.",
   amazonNote:"상품 이미지는 라쿠텐 이치바 API 또는 Amazon 공식 Product Advertising API를 통해 가져옵니다. 관리자 설정에서 API를 연결하기 전까지는 자체 제작 아이콘으로 대체 표시됩니다.",
@@ -753,6 +758,7 @@ const I18N = {
   ratingsSub:"Ulasan pembaca memengaruhi sekitar separuh dari skor yang ditampilkan",
   difficultyNote:"Skor kelangkaan menunjukkan seberapa mudah botol ini dibeli seharga label. Semakin tinggi, semakin sering habis, dijual via undian, atau diperjualbelikan di atas harga eceran.",
   votePrefix:"Beri suara untuk skor ini:", polishRate:"Rasio penggilingan", prefecture:"Daerah", price:"Harga Resmi (termasuk pajak)", taxIncl:"termasuk pajak",
+  rakutenPrice:"Harga Rakuten", priceReference:"Harga referensi, termasuk pajak",
   addSakeModalTitle:"Prompt riset botol baru",
   addSakeModalBody:"Salin teks di bawah dan tempel ke percakapan Claude baru. Ia akan meriset sake asli dan mengembalikan data dalam format JSON situs ini.",
   amazonNote:"Gambar produk diambil lewat Rakuten Ichiba API atau Amazon Product Advertising API resmi. Sebelum API terhubung di pengaturan admin, ikon buatan sendiri ditampilkan sebagai gantinya.",
@@ -1286,6 +1292,9 @@ function cardHTML(s, data){
   const imgStyle = hasPhoto
     ? `background-image:url('${data.image}');background-size:cover;background-position:center;`
     : `background:${s.color}`;
+  const priceInfo = (data && data.price)
+    ? {value: data.price, label: `（${t("rakutenPrice")}）`}
+    : {value: "¥"+s.price.toLocaleString(), label: `（${t("priceReference")}）`};
   return `
   <div class="card" onclick="openDetail('${s.id}')">
     <div class="cardImg" style="${imgStyle}">${hasPhoto ? "" : s.emoji}
@@ -1308,7 +1317,7 @@ function cardHTML(s, data){
         <div class="gaugeTrack diff"><div class="gaugeDot" style="left:${displayScore(s,'difficulty')/5*100}%;"></div></div>
       </div>
       <div class="cardMeta">
-        <div class="cardPrice">¥${s.price.toLocaleString()}<span class="cardPriceTax">（${t("taxIncl")}）</span></div>
+        <div class="cardPrice">${priceInfo.value}<span class="cardPriceTax">${priceInfo.label}</span></div>
         <div class="nomitaiBadge" data-nomitai-count="${s.id}">🍶 ${nomitaiCount(s.id)}${t("nomitaiCountSuffix")}</div>
       </div>
     </div>
@@ -1511,21 +1520,25 @@ function forceHttpsImage(url){
 function fetchProductImage(sake){
   if(productImageCache[sake.id]) return productImageCache[sake.id];
   const promise = (async ()=>{
-    /* 手動で確認済みの画像URLがあれば、API呼び出しを待たずにそれを使う
-       （検索キーワードのミスマッチやAPI不調に左右されず確実に表示するため） */
-    if(sake.confirmedImage) return {image: sake.confirmedImage};
-
     const {rakutenWorkerUrl, rakutenAppId, rakutenAccessKey, rakutenAffiliateId, workerUrl} = getSettings();
+    let apiData = null;
     if(rakutenWorkerUrl && rakutenAppId){
       try{
         const url = `${rakutenWorkerUrl}?keywords=${encodeURIComponent(sake.amazonQuery)}&applicationId=${encodeURIComponent(rakutenAppId)}&accessKey=${encodeURIComponent(rakutenAccessKey||"")}&affiliateId=${encodeURIComponent(rakutenAffiliateId||"")}`;
         const res = await fetch(url);
         if(res.ok){
           const data = await res.json();
-          if(data && data.image){ data.image = forceHttpsImage(data.image); return data; }
+          if(data) apiData = data;
         }
       }catch(e){ /* 楽天で失敗しても次にAmazonを試す */ }
     }
+    /* 手動で確認済みの画像URLがあれば、画像だけはそちらを優先表示する
+       （検索キーワードのミスマッチやAPI不調に左右されず確実に表示するため）。
+       価格は confirmedImage の有無に関わらず、取れていれば楽天APIの値を使う。 */
+    if(sake.confirmedImage){
+      return {...(apiData||{}), image: sake.confirmedImage};
+    }
+    if(apiData && apiData.image){ apiData.image = forceHttpsImage(apiData.image); return apiData; }
     if(workerUrl){
       try{
         const domain = AMAZON_DOMAIN[currentLang] || "amazon.co.jp";
@@ -1533,10 +1546,16 @@ function fetchProductImage(sake){
         const res = await fetch(url);
         if(res.ok){
           const data = await res.json();
-          if(data && data.image){ data.image = forceHttpsImage(data.image); return data; }
+          if(data && data.image){
+            data.image = forceHttpsImage(data.image);
+            /* 楽天から価格だけ取れていた場合は、Amazon側の画像と合わせて楽天価格を優先温存 */
+            if(apiData && apiData.price) data.price = apiData.price;
+            return data;
+          }
         }
       }catch(e){ /* 両方失敗したら画像なし扱い */ }
     }
+    if(apiData) return apiData;
     return null;
   })();
   productImageCache[sake.id] = promise;
@@ -1558,7 +1577,9 @@ function applyProductData(sake, data, source){
     if(buyBtn && data.url) buyBtn.href = data.url + (data.url.includes("?")?"&":"?") + "tag=" + getSettings().affiliateTag;
   }else if(source==="rakuten"){
     const priceLabel = document.getElementById("rakutenPriceLabel-"+sake.id);
-    if(priceLabel && data.price) priceLabel.textContent = data.price;
+    if(priceLabel && data.price) priceLabel.textContent = `${t("rakutenPrice")} ${data.price}`;
+    const priceChip = document.getElementById("priceChip-"+sake.id);
+    if(priceChip && data.price) priceChip.textContent = `${t("rakutenPrice")} ${data.price}`;
     const buyBtn = document.getElementById("rakutenBtn-"+sake.id);
     if(buyBtn && data.url) buyBtn.href = data.url;
   }
@@ -1604,7 +1625,7 @@ function detailHTML(sake){
         <div class="factRow">
           <div class="factChip">${t("type_"+sake.type)}</div>
           <div class="factChip">${t("polishRate")} ${sake.seimaibuai}%</div>
-          <div class="factChip">${t("price")} ¥${sake.price.toLocaleString()}</div>
+          <div class="factChip" id="priceChip-${sake.id}">${t("priceReference")} ¥${sake.price.toLocaleString()}</div>
         </div>
       </div>
     </div>
