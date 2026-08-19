@@ -471,6 +471,31 @@ input[type=range]{width:100%;accent-color:#263b52;}
         </div>
         <button class="modalBtn ghost" style="margin-bottom:10px;" onclick="showRakutenWorkerCode()">楽天用Workerコードを見る／コピー</button>
 
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid #eadfc7;">
+          <div class="sectionTitle" style="margin-bottom:6px;">⏱️ 表示を一瞬にする（30日ごとの自動更新）</div>
+          <div class="bodyText">
+以前は詳細ページを開くたびに楽天APIへ問い合わせていたため表示に時間がかかっていました。
+今はSupabaseの sake テーブルにキャッシュ列を持たせ、Cloudflare WorkerのCron Triggerが
+1日1回バックグラウンドで「30日以上前 or 未取得」の銘柄だけをまとめて更新するようにしています。
+一覧・詳細ページはそのキャッシュ列を読むだけなので表示は一瞬です。
+
+1. SupabaseのSQL Editorで以下を実行し、sake テーブルにキャッシュ列を追加
+   <code style="display:block;background:#f6f1e7;padding:8px;border-radius:6px;margin:6px 0;white-space:pre-wrap;font-size:11px;">alter table sake
+  add column if not exists cached_image text,
+  add column if not exists cached_price text,
+  add column if not exists cached_url text,
+  add column if not exists cached_updated_at timestamptz;</code>
+2. 上の「楽天用Workerコードを見る／コピー」を再度コピーし、既存の楽天Workerを更新（またはデプロイ）
+3. Cloudflareダッシュボードの Worker → Settings → Variables に、以下を追加
+   ・SUPABASE_URL（下のSupabase接続設定と同じ値）
+   ・SUPABASE_SERVICE_ROLE_KEY（Supabaseの Project Settings → API → service_role キー。★anonキーではなくservice_roleキー。絶対にクライアント側コードには書かない）
+   ・RAKUTEN_APP_ID / RAKUTEN_ACCESS_KEY / RAKUTEN_AFFILIATE_ID（上の楽天アプリID等と同じ値）
+4. Cloudflareダッシュボードの Worker → Settings → Triggers → Cron Triggers で
+   「Add Cron Trigger」から毎日1回（例: 0 3 * * *＝毎日AM3時）を追加
+5. 以降、全銘柄が自動的に30日ごとに更新され、ページ表示自体はSupabaseのキャッシュを読むだけになります
+          </div>
+        </div>
+
         <div class="field" style="margin-top:16px;padding-top:16px;border-top:1px solid #eadfc7;">
           <div class="sectionTitle" style="margin-bottom:6px;">🟦 Amazon（要:180日で3件以上の紹介実績）</div>
           <div class="fieldLabel">Amazonアソシエイトタグ</div>
@@ -909,7 +934,14 @@ function sakeRowToObject(row){
     sources: Array.isArray(row.sources) ? row.sources : [],
     amazonQuery: row.amazon_query || row.name || "",
     emoji: row.emoji || "🍶",
-    color: row.color || "linear-gradient(160deg,#3d5f80,#263b52)"
+    color: row.color || "linear-gradient(160deg,#3d5f80,#263b52)",
+    /* 30日に1回、CloudflareのCron TriggerがバックグラウンドでSupabaseに書き込む
+       楽天APIの取得結果キャッシュ。クライアントはこれをそのまま表示に使うだけで、
+       ページを開くたびに楽天APIへ問い合わせる必要がなくなる。 */
+    cachedImage: row.cached_image || "",
+    cachedPrice: row.cached_price || "",
+    cachedUrl: row.cached_url || "",
+    cachedUpdatedAt: row.cached_updated_at || null
   };
 }
 function sakeObjectToRow(s){
@@ -934,6 +966,9 @@ function sakeObjectToRow(s){
     emoji: s.emoji,
     color: s.color,
     updated_at: new Date().toISOString()
+    /* cached_image / cached_price / cached_url / cached_updated_at はここでは書かない。
+       それらはCloudflare Worker（Cron Trigger）だけが更新する専用領域のため、
+       管理画面からの保存でうっかり空上書きしないようにする。 */
   };
 }
 
@@ -1266,25 +1301,38 @@ async function renderList(){
 
   const {rakutenWorkerUrl, rakutenAppId, workerUrl} = getSettings();
   const apiConfigured = !!((rakutenWorkerUrl && rakutenAppId) || workerUrl);
-  const hasConfirmedImages = items.some(s=>s.confirmedImage);
 
-  /* APIが未接続、かつ手動確認済み画像も無いものだけの場合は、
-     これまで通り全件を自作アイコンで表示する
-     （ここで絞り込むと、設定前は一覧が空っぽになってしまうため） */
-  if(!apiConfigured && !hasConfirmedImages){
-    area.innerHTML = items.map(s=>cardHTML(s, null)).join("");
-    return;
-  }
+  /* まずはSupabaseに保存済みのキャッシュ（30日に1回Cron Triggerが更新）だけで
+     即座に一覧を描画する。APIへの問い合わせが無いのでほぼ一瞬で表示できる。 */
+  area.innerHTML = items.map(s=>cardHTML(s, cachedDataOf(s))).join("");
+
+  if(!apiConfigured) return;
+
+  /* キャッシュが無い銘柄（追加直後でまだCronが1回も回っていないものなど）だけ、
+     従来通りその場でAPIに問い合わせて画像・価格を後から差し込む。
+     キャッシュ済みの銘柄は再取得しないので、体感速度に影響しない。 */
+  const uncached = items.filter(s=>!s.cachedImage && !s.confirmedImage);
+  if(uncached.length===0) return;
 
   const token = ++renderListToken;
-  area.innerHTML = `<div class="emptyState">画像を確認中…</div>`;
-  const results = await Promise.all(items.map(async s=>({sake:s, data: await fetchProductImage(s)})));
+  const results = await Promise.all(uncached.map(async s=>({sake:s, data: await fetchProductImage(s)})));
   if(token !== renderListToken) return; // 検索・絞り込み中に新しい描画が走った場合は古い結果を捨てる
 
-  /* 画像が取得できなかった商品も一覧から消さず、絵文字アイコンで表示を継続する
-     （以前は withImage だけに絞っていたため、1件でも取得失敗すると
-      その商品だけ一覧から丸ごと消えてしまっていた） */
-  area.innerHTML = results.map(r=>cardHTML(r.sake, r.data)).join("");
+  area.innerHTML = items.map(s=>{
+    const fresh = results.find(r=>r.sake.id===s.id);
+    return cardHTML(s, fresh ? fresh.data : cachedDataOf(s));
+  }).join("");
+}
+
+/* sakeオブジェクトから、cardHTML/detailHTMLが期待する {image, price, url} 形式を作る。
+   confirmedImage（手動確認済み画像）を最優先し、次にキャッシュ済みの楽天データを使う。 */
+function cachedDataOf(s){
+  if(!s.cachedImage && !s.cachedPrice && !s.confirmedImage) return null;
+  return {
+    image: s.confirmedImage || s.cachedImage || null,
+    price: s.cachedPrice || null,
+    url: s.cachedUrl || null
+  };
 }
 
 function cardHTML(s, data){
@@ -1450,6 +1498,7 @@ function amazonUrl(sake){
 }
 
 function rakutenUrl(sake){
+  if(sake.cachedUrl) return sake.cachedUrl; // キャッシュ済みの実商品リンクがあればそちらを優先
   const q = encodeURIComponent(sake.amazonQuery);
   const {rakutenAffiliateId} = getSettings();
   const dest = `https://search.rakuten.co.jp/search/mall/${q}/`;
@@ -1481,12 +1530,18 @@ async function tryFetchAmazonData(sake){
    Amazon PA-APIより先にこちらが成功すればそちらを優先して表示に使う。 */
 async function tryFetchRakutenData(sake){
   /* 画像は実在確認済みのconfirmedImageを常に優先表示する（自動検索だと
-     ミスマッチ商品の画像に化けることがあるため）。
-     ただし価格・購入リンクは confirmedImage の有無に関わらず、
-     詳細ページを開くたびに楽天APIへ問い合わせて最新の値に自動連携する。 */
+     ミスマッチ商品の画像に化けることがあるため）。 */
   if(sake.confirmedImage){
     applyProductData(sake, {image: sake.confirmedImage}, "rakuten");
   }
+  /* 価格・購入リンクはSupabaseの30日キャッシュ（Cron Triggerが更新）があれば
+     それをそのまま使い、詳細ページを開くたびに楽天APIへは問い合わせない。
+     detailHTML() で表示済みの初期値をそのまま維持すればよいのでここで終了。 */
+  if(sake.cachedPrice || sake.cachedUrl){
+    return;
+  }
+  /* キャッシュがまだ無い銘柄（追加直後などCronがまだ1回も回っていないもの）だけ、
+     従来通りその場で楽天APIに問い合わせる。 */
   const {rakutenWorkerUrl, rakutenAppId, rakutenAccessKey, rakutenAffiliateId} = getSettings();
   if(!rakutenWorkerUrl || !rakutenAppId) return;
   try{
@@ -1632,7 +1687,7 @@ function detailHTML(sake){
 
   return `
     <div class="detailHero">
-      <div class="detailImg" id="detailImg-${sake.id}" style="${sake.confirmedImage ? `background-image:url('${sake.confirmedImage}');` : `background:${sake.color}`}">${sake.confirmedImage ? "" : sake.emoji}</div>
+      <div class="detailImg" id="detailImg-${sake.id}" style="${(sake.confirmedImage||sake.cachedImage) ? `background-image:url('${sake.confirmedImage||sake.cachedImage}');` : `background:${sake.color}`}">${(sake.confirmedImage||sake.cachedImage) ? "" : sake.emoji}</div>
       <div class="detailTitleBox">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
           <h2 style="margin:0;">${sakeName(sake)}</h2>
@@ -1645,7 +1700,7 @@ function detailHTML(sake){
         <div class="factRow">
           <div class="factChip">${t("type_"+sake.type)}</div>
           <div class="factChip">${t("polishRate")} ${sake.seimaibuai}%</div>
-          <div class="factChip" id="priceChip-${sake.id}">${t("priceReference")} ¥${sake.price.toLocaleString()}</div>
+          <div class="factChip" id="priceChip-${sake.id}">${sake.cachedPrice ? `${t("rakutenPrice")} ${sake.cachedPrice}` : `${t("priceReference")} ¥${sake.price.toLocaleString()}`}</div>
         </div>
       </div>
     </div>
@@ -1655,7 +1710,7 @@ function detailHTML(sake){
         🛒 ${t("buyAmazon")}<br><small id="buyPriceLabel-${sake.id}"></small>
       </a>
       <a class="buyBtn" id="rakutenBtn-${sake.id}" href="${rakutenUrl(sake)}" target="_blank" rel="noopener nofollow sponsored" style="background:#bf0000;">
-        🛒 ${t("buyRakuten")}<br><small id="rakutenPriceLabel-${sake.id}"></small>
+        🛒 ${t("buyRakuten")}<br><small id="rakutenPriceLabel-${sake.id}">${sake.cachedPrice ? `${t("rakutenPrice")} ${sake.cachedPrice}` : ""}</small>
       </a>
     </div>
     <div class="section" style="padding-top:0;">
@@ -1690,7 +1745,7 @@ function detailHTML(sake){
           const isSelf = s.id===sake.id;
           return `
           <div class="miniCard ${isSelf?'isSelf':''}" onclick="openDetail('${s.id}')">
-            <div class="miniImg" style="${s.confirmedImage ? `background-image:url('${s.confirmedImage}');` : `background:${s.color}`}">${s.confirmedImage ? "" : s.emoji}</div>
+            <div class="miniImg" style="${(s.confirmedImage||s.cachedImage) ? `background-image:url('${s.confirmedImage||s.cachedImage}');` : `background:${s.color}`}">${(s.confirmedImage||s.cachedImage) ? "" : s.emoji}</div>
             <div class="miniName">${sakeName(s)}</div>
             <div class="miniSub">¥${s.price.toLocaleString()}</div>
             <div class="miniGrade">${t("type_"+s.type)}</div>
@@ -1704,7 +1759,7 @@ function detailHTML(sake){
       <div class="horizList">
         ${similars.map(({sake:s,simPct})=>`
           <div class="miniCard" onclick="openDetail('${s.id}')">
-            <div class="miniImg" style="${s.confirmedImage ? `background-image:url('${s.confirmedImage}');` : `background:${s.color}`}">${s.confirmedImage ? "" : s.emoji}</div>
+            <div class="miniImg" style="${(s.confirmedImage||s.cachedImage) ? `background-image:url('${s.confirmedImage||s.cachedImage}');` : `background:${s.color}`}">${(s.confirmedImage||s.cachedImage) ? "" : s.emoji}</div>
             <div class="miniName">${sakeName(s)}</div>
             <div class="miniSub">${sakeBrewery(s)}</div>
             <div class="simScore">${t("helpful")==="Helpful" ? "match" : "類似度"} ${simPct}%</div>
@@ -2384,13 +2439,25 @@ function copyWorkerCode(){
   showToast("✓ コピーしました");
 }
 
-/* ---- 楽天市場API（商品検索API）用の軽量中継Worker。署名不要でAmazon版より遥かにシンプル ---- */
-const RAKUTEN_WORKER_CODE = `export default {
+/* ---- 楽天市場API（商品検索API）用の軽量中継Worker。署名不要でAmazon版より遥かにシンプル ----
+   このWorkerは2つの入り口を持つ：
+   1. fetch()      … 従来通りブラウザから直接呼べるオンデマンド取得（新規銘柄の初回取得などに使用）
+   2. scheduled()  … Cron Triggerで1日1回起動し、Supabaseの sake テーブルのうち
+                      cached_updated_at が30日以上前（または未取得）の銘柄だけをまとめて
+                      楽天APIから取得し、Supabaseに書き戻す。ブラウザ側は表示のたびに
+                      楽天APIを呼ぶ必要がなくなり、常にSupabaseのキャッシュ列を読むだけになる。 */
+const RAKUTEN_WORKER_CODE = `// 1回のCron実行で処理する銘柄数の上限（Workerの実行時間制限内に収めるため）。
+// 全銘柄がこれより多い場合は、翌日以降のCron実行で残りが順次処理される
+// （常に cached_updated_at が古い銘柄から優先されるため、いずれ全件に行き渡る）。
+const CRON_BATCH_LIMIT = 25;
+const RAKUTEN_REQUEST_INTERVAL_MS = 350; // 楽天APIのレート制限（目安：秒間1リクエスト程度）対策
+const STALE_MS = 30 * 24 * 60 * 60 * 1000; // 30日
+
+export default {
   async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders() });
 
-    // 同じ検索条件（URL）への問い合わせはキャッシュがあればそれを返す。
-    // 楽天APIの実呼び出しを毎回行わず、約30日に1回程度の頻度に抑えるための仕組み。
+    // 同じ検索条件（URL）への問い合わせはキャッシュがあればそれを返す（旧来のオンデマンド経路用）。
     const cache = caches.default;
     const cached = await cache.match(request);
     if (cached) return cached;
@@ -2404,65 +2471,11 @@ const RAKUTEN_WORKER_CODE = `export default {
       return new Response(JSON.stringify({ error: "keywords and applicationId required" }), { status: 400, headers: corsHeaders() });
     }
 
-    // 2026年5月13日の楽天API仕様変更に対応：
-    // ・エンドポイントが openapi.rakuten.co.jp/ichibams/ に変更
-    // ・UUID形式の新applicationIdでは accessKey が別途必須
-    // ・Referer/Origin ヘッダーが無いと弾かれる
-    // 2026年8月17日にIchibaItem/Search/20220601が完全廃止されたため、
-    // 新バージョン 20260401（属性情報対応版）を使用する
-    const api = new URL("https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260401");
-    api.searchParams.set("format", "json");
-    api.searchParams.set("applicationId", applicationId);
-    if (accessKey) api.searchParams.set("accessKey", accessKey);
-    if (affiliateId) api.searchParams.set("affiliateId", affiliateId);
-    api.searchParams.set("hits", "10");
-
-    // 画像が付いているアイテムを探すヘルパー（1件だけだと画像なし商品がヒットして失敗しやすいため）
-    async function searchAndPickWithImage(keyword) {
-      api.searchParams.set("keyword", keyword);
-      const res = await fetch(api.toString(), {
-        headers: {
-          "Referer": url.origin,
-          "Origin": url.origin
-        }
-      });
-      if (!res.ok) {
-        let detail = "";
-        try { detail = await res.text(); } catch (e) {}
-        return { error: "rakuten api error " + res.status + (detail ? ": " + detail.slice(0, 300) : ""), status: 502 };
-      }
-      const data = await res.json();
-      const items = (data.Items || []).map(i => i.Item).filter(Boolean);
-      if (items.length === 0) return { error: "not found", status: 404 };
-      const withImage = items.find(i => i.mediumImageUrls && i.mediumImageUrls[0] && i.mediumImageUrls[0].imageUrl);
-      const item = withImage || items[0];
-      return { item };
-    }
-
     try {
-      let { item, error, status } = await searchAndPickWithImage(keywords);
-
-      // キーワードが細かすぎて(容量表記など)ヒットしなかった場合、
-      // 最後の単語を削って緩めたキーワードで再検索する
-      if ((!item || !(item.mediumImageUrls && item.mediumImageUrls[0])) && keywords.trim().includes(" ")) {
-        const loosened = keywords.trim().split(/\s+/).slice(0, -1).join(" ");
-        if (loosened) {
-          const retry = await searchAndPickWithImage(loosened);
-          if (retry.item && retry.item.mediumImageUrls && retry.item.mediumImageUrls[0]) {
-            item = retry.item;
-          }
-        }
-      }
-
-      // 見つからなかった場合はキャッシュせずそのまま返す（次回リクエスト時に再挑戦できるように）
+      const { item, error, status } = await searchAndPickWithImage(keywords, { applicationId, accessKey, affiliateId, origin: url.origin });
       if (!item) return new Response(JSON.stringify({ error: error || "not found" }), { status: status || 404, headers: corsHeaders() });
 
-      const out = {
-        title: item.itemName,
-        image: item.mediumImageUrls && item.mediumImageUrls[0] && item.mediumImageUrls[0].imageUrl,
-        price: item.itemPrice ? ("¥" + Number(item.itemPrice).toLocaleString()) : undefined,
-        url: item.affiliateUrl || item.itemUrl
-      };
+      const out = itemToOut(item);
       // 30日間（2592000秒）キャッシュし、同じ検索条件へのリクエストは楽天APIを呼ばずに返す
       const response = new Response(JSON.stringify(out), {
         headers: { ...corsHeaders(), "Cache-Control": "public, max-age=2592000" }
@@ -2472,11 +2485,141 @@ const RAKUTEN_WORKER_CODE = `export default {
     } catch (err) {
       return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: corsHeaders() });
     }
+  },
+
+  // Cron Trigger（例: 毎日AM3時）から起動される。Supabase側のキャッシュ列を更新する。
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(refreshStaleSake(env));
   }
 };
 
+// 画像が付いているアイテムを探すヘルパー（1件だけだと画像なし商品がヒットして失敗しやすいため）
+async function searchAndPickWithImage(keyword, { applicationId, accessKey, affiliateId, origin }) {
+  // 2026年5月13日の楽天API仕様変更に対応：
+  // ・エンドポイントが openapi.rakuten.co.jp/ichibams/ に変更
+  // ・UUID形式の新applicationIdでは accessKey が別途必須
+  // ・Referer/Origin ヘッダーが無いと弾かれる
+  // 2026年8月17日にIchibaItem/Search/20220601が完全廃止されたため、
+  // 新バージョン 20260401（属性情報対応版）を使用する
+  const api = new URL("https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260401");
+  api.searchParams.set("format", "json");
+  api.searchParams.set("applicationId", applicationId);
+  if (accessKey) api.searchParams.set("accessKey", accessKey);
+  if (affiliateId) api.searchParams.set("affiliateId", affiliateId);
+  api.searchParams.set("hits", "10");
+
+  async function run(kw) {
+    api.searchParams.set("keyword", kw);
+    const res = await fetch(api.toString(), {
+      headers: { "Referer": origin, "Origin": origin }
+    });
+    if (!res.ok) {
+      let detail = "";
+      try { detail = await res.text(); } catch (e) {}
+      return { error: "rakuten api error " + res.status + (detail ? ": " + detail.slice(0, 300) : ""), status: 502 };
+    }
+    const data = await res.json();
+    const items = (data.Items || []).map(i => i.Item).filter(Boolean);
+    if (items.length === 0) return { error: "not found", status: 404 };
+    const withImage = items.find(i => i.mediumImageUrls && i.mediumImageUrls[0] && i.mediumImageUrls[0].imageUrl);
+    return { item: withImage || items[0] };
+  }
+
+  let { item, error, status } = await run(keyword);
+
+  // キーワードが細かすぎて(容量表記など)ヒットしなかった場合、
+  // 最後の単語を削って緩めたキーワードで再検索する
+  if ((!item || !(item.mediumImageUrls && item.mediumImageUrls[0])) && keyword.trim().includes(" ")) {
+    const loosened = keyword.trim().split(/\\s+/).slice(0, -1).join(" ");
+    if (loosened) {
+      const retry = await run(loosened);
+      if (retry.item && retry.item.mediumImageUrls && retry.item.mediumImageUrls[0]) {
+        item = retry.item;
+      }
+    }
+  }
+  return { item, error, status };
+}
+
+function itemToOut(item) {
+  return {
+    title: item.itemName,
+    image: item.mediumImageUrls && item.mediumImageUrls[0] && item.mediumImageUrls[0].imageUrl,
+    price: item.itemPrice ? ("¥" + Number(item.itemPrice).toLocaleString()) : undefined,
+    url: item.affiliateUrl || item.itemUrl
+  };
+}
+
 function corsHeaders() {
   return { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET,OPTIONS" };
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Supabaseの sake テーブルから「cached_updated_at が無い、または30日以上前」の銘柄を
+// 古い順にCRON_BATCH_LIMIT件だけ取得し、楽天APIで取得した画像・価格・URLを書き戻す。
+async function refreshStaleSake(env) {
+  const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RAKUTEN_APP_ID, RAKUTEN_ACCESS_KEY, RAKUTEN_AFFILIATE_ID } = env;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !RAKUTEN_APP_ID) {
+    console.error("scheduled: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / RAKUTEN_APP_ID が未設定です");
+    return;
+  }
+
+  const headers = {
+    "apikey": SUPABASE_SERVICE_ROLE_KEY,
+    "Authorization": "Bearer " + SUPABASE_SERVICE_ROLE_KEY,
+    "Content-Type": "application/json"
+  };
+
+  // cached_updated_at が古い（nullを含む）順に取得。nullsfirst で未取得の銘柄を優先。
+  const listUrl = SUPABASE_URL + "/rest/v1/sake?select=id,amazon_query,cached_updated_at&order=cached_updated_at.asc.nullsfirst&limit=" + (CRON_BATCH_LIMIT * 3);
+  const listRes = await fetch(listUrl, { headers });
+  if (!listRes.ok) {
+    console.error("scheduled: sake一覧の取得に失敗", listRes.status, await listRes.text());
+    return;
+  }
+  const rows = await listRes.json();
+  const now = Date.now();
+  const stale = rows
+    .filter(r => !r.cached_updated_at || (now - new Date(r.cached_updated_at).getTime()) > STALE_MS)
+    .slice(0, CRON_BATCH_LIMIT);
+
+  if (stale.length === 0) {
+    console.log("scheduled: 更新対象なし（全銘柄が30日以内に更新済み）");
+    return;
+  }
+
+  for (const row of stale) {
+    if (!row.amazon_query) continue;
+    try {
+      const { item } = await searchAndPickWithImage(row.amazon_query, {
+        applicationId: RAKUTEN_APP_ID,
+        accessKey: RAKUTEN_ACCESS_KEY || "",
+        affiliateId: RAKUTEN_AFFILIATE_ID || "",
+        origin: SUPABASE_URL
+      });
+      const out = item ? itemToOut(item) : null;
+      const patchBody = {
+        cached_image: out && out.image ? out.image.replace(/^http:\\/\\//i, "https://") : null,
+        cached_price: out && out.price ? out.price : null,
+        cached_url: out && out.url ? out.url : null,
+        cached_updated_at: new Date().toISOString()
+      };
+      const patchUrl = SUPABASE_URL + "/rest/v1/sake?id=eq." + encodeURIComponent(row.id);
+      const patchRes = await fetch(patchUrl, {
+        method: "PATCH",
+        headers: { ...headers, "Prefer": "return=minimal" },
+        body: JSON.stringify(patchBody)
+      });
+      if (!patchRes.ok) {
+        console.error("scheduled: 書き戻し失敗", row.id, patchRes.status, await patchRes.text());
+      }
+    } catch (err) {
+      console.error("scheduled: 取得例外", row.id, String(err));
+    }
+    await sleep(RAKUTEN_REQUEST_INTERVAL_MS);
+  }
+  console.log("scheduled: " + stale.length + "件を更新しました");
 }
 `;
 function showRakutenWorkerCode(){
