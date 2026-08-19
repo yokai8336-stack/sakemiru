@@ -570,7 +570,7 @@ const I18N = {
   rakutenPrice:"楽天価格", priceReference:"参考価格・税込",
   addSakeModalTitle:"新規銘柄 追加用プロンプト",
   addSakeModalBody:"下のテキストをコピーし、新しいClaudeの会話に貼り付けてください。実在する日本酒を調べ、このサイトのJSON形式でデータを作成してくれます。",
-  amazonNote:"※商品画像は事前に実在確認した画像を固定表示しています。価格・購入リンクは楽天APIから毎回自動的に最新の値を取得します（Amazon側はPA-API接続時のみ）。",
+  amazonNote:"※商品画像は事前に実在確認した画像を固定表示しています。価格・購入リンクは楽天APIから取得し、約30日間キャッシュした値を表示します（Amazon側はPA-API接続時のみ）。",
   wikiTitle:"Wikipediaで調べる",
   sec_ranking:"🔥 ノミタイ・ランキング", nomitaiCountSuffix:"人がノミタイ",
   sortLabel:"並び替え", sort_default:"おすすめ順", sort_nomitai:"ノミタイが多い順",
@@ -610,7 +610,7 @@ const I18N = {
   rakutenPrice:"Rakuten Price", priceReference:"Reference price, tax incl.",
   addSakeModalTitle:"New bottle research prompt",
   addSakeModalBody:"Copy the text below and paste it into a new Claude conversation. It will research a real sake and return data in this site's JSON format.",
-  amazonNote:"Product images are fixed to a manually verified photo. Price and purchase links are automatically refreshed from the Rakuten API every time (Amazon links only when PA-API is connected).",
+  amazonNote:"Product images are fixed to a manually verified photo. Price and purchase links are fetched from the Rakuten API and cached for about 30 days (Amazon links only when PA-API is connected).",
   wikiTitle:"Look up on Wikipedia",
   sec_ranking:"🔥 Most wanted to drink", nomitaiCountSuffix:" want to try this",
   sortLabel:"Sort by", sort_default:"Recommended", sort_nomitai:"Most wanted to drink",
@@ -1491,9 +1491,11 @@ async function tryFetchRakutenData(sake){
   if(!rakutenWorkerUrl || !rakutenAppId) return;
   try{
     const url = `${rakutenWorkerUrl}?keywords=${encodeURIComponent(sake.amazonQuery)}&applicationId=${encodeURIComponent(rakutenAppId)}&accessKey=${encodeURIComponent(rakutenAccessKey||"")}&affiliateId=${encodeURIComponent(rakutenAffiliateId||"")}`;
-    const res = await fetch(url);
-    if(!res.ok) return;
-    const data = await res.json(); // 期待する形: {image, price, url, title}
+    const data = await queueRakutenFetch(async ()=>{
+      const res = await fetch(url);
+      if(!res.ok) return null;
+      return await res.json(); // 期待する形: {image, price, url, title}
+    });
     if(!data) return;
     /* confirmedImageがある場合は画像だけは上書きしない（価格・URLのみ反映） */
     if(sake.confirmedImage) delete data.image;
@@ -1517,6 +1519,23 @@ function clearProductImageCache(){
 function forceHttpsImage(url){
   return url ? url.replace(/^http:\/\//i, "https://") : url;
 }
+/* 楽天APIはレート制限（目安：秒間1リクエスト程度）があるため、
+   一覧画面のように複数商品を同時に問い合わせると、後続のリクエストが
+   まとめて失敗しやすい（詳細ページは1件だけなので通りやすい）。
+   ここで呼び出しを1本のキューに直列化し、1件ごとに間隔を空けて送る。 */
+let rakutenQueueTail = Promise.resolve();
+const RAKUTEN_REQUEST_INTERVAL_MS = 350;
+function queueRakutenFetch(fn){
+  const run = rakutenQueueTail.then(async ()=>{
+    try{
+      return await fn();
+    }finally{
+      await new Promise(r=>setTimeout(r, RAKUTEN_REQUEST_INTERVAL_MS));
+    }
+  });
+  rakutenQueueTail = run.catch(()=>{}); // 1件失敗してもキュー自体は止めない
+  return run;
+}
 function fetchProductImage(sake){
   if(productImageCache[sake.id]) return productImageCache[sake.id];
   const promise = (async ()=>{
@@ -1525,11 +1544,12 @@ function fetchProductImage(sake){
     if(rakutenWorkerUrl && rakutenAppId){
       try{
         const url = `${rakutenWorkerUrl}?keywords=${encodeURIComponent(sake.amazonQuery)}&applicationId=${encodeURIComponent(rakutenAppId)}&accessKey=${encodeURIComponent(rakutenAccessKey||"")}&affiliateId=${encodeURIComponent(rakutenAffiliateId||"")}`;
-        const res = await fetch(url);
-        if(res.ok){
-          const data = await res.json();
-          if(data) apiData = data;
-        }
+        const data = await queueRakutenFetch(async ()=>{
+          const res = await fetch(url);
+          if(!res.ok) return null;
+          return await res.json();
+        });
+        if(data) apiData = data;
       }catch(e){ /* 楽天で失敗しても次にAmazonを試す */ }
     }
     /* 手動で確認済みの画像URLがあれば、画像だけはそちらを優先表示する
@@ -2366,8 +2386,15 @@ function copyWorkerCode(){
 
 /* ---- 楽天市場API（商品検索API）用の軽量中継Worker。署名不要でAmazon版より遥かにシンプル ---- */
 const RAKUTEN_WORKER_CODE = `export default {
-  async fetch(request) {
+  async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders() });
+
+    // 同じ検索条件（URL）への問い合わせはキャッシュがあればそれを返す。
+    // 楽天APIの実呼び出しを毎回行わず、約30日に1回程度の頻度に抑えるための仕組み。
+    const cache = caches.default;
+    const cached = await cache.match(request);
+    if (cached) return cached;
+
     const url = new URL(request.url);
     const keywords = url.searchParams.get("keywords") || "";
     const applicationId = url.searchParams.get("applicationId") || "";
@@ -2427,6 +2454,7 @@ const RAKUTEN_WORKER_CODE = `export default {
         }
       }
 
+      // 見つからなかった場合はキャッシュせずそのまま返す（次回リクエスト時に再挑戦できるように）
       if (!item) return new Response(JSON.stringify({ error: error || "not found" }), { status: status || 404, headers: corsHeaders() });
 
       const out = {
@@ -2435,7 +2463,12 @@ const RAKUTEN_WORKER_CODE = `export default {
         price: item.itemPrice ? ("¥" + Number(item.itemPrice).toLocaleString()) : undefined,
         url: item.affiliateUrl || item.itemUrl
       };
-      return new Response(JSON.stringify(out), { headers: corsHeaders() });
+      // 30日間（2592000秒）キャッシュし、同じ検索条件へのリクエストは楽天APIを呼ばずに返す
+      const response = new Response(JSON.stringify(out), {
+        headers: { ...corsHeaders(), "Cache-Control": "public, max-age=2592000" }
+      });
+      ctx.waitUntil(cache.put(request, response.clone()));
+      return response;
     } catch (err) {
       return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: corsHeaders() });
     }
