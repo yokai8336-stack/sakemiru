@@ -2375,7 +2375,11 @@ const RAKUTEN_WORKER_CODE = `export default {
           "Origin": url.origin
         }
       });
-      if (!res.ok) return { error: "rakuten api error " + res.status, status: 502 };
+      if (!res.ok) {
+        let detail = "";
+        try { detail = await res.text(); } catch (e) {}
+        return { error: "rakuten api error " + res.status + (detail ? ": " + detail.slice(0, 300) : ""), status: 502 };
+      }
       const data = await res.json();
       const items = (data.Items || []).map(i => i.Item).filter(Boolean);
       if (items.length === 0) return { error: "not found", status: 404 };
