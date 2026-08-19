@@ -2359,7 +2359,9 @@ const RAKUTEN_WORKER_CODE = `export default {
     // ・エンドポイントが openapi.rakuten.co.jp/ichibams/ に変更
     // ・UUID形式の新applicationIdでは accessKey が別途必須
     // ・Referer/Origin ヘッダーが無いと弾かれる
-    const api = new URL("https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601");
+    // 2026年8月17日にIchibaItem/Search/20220601が完全廃止されたため、
+    // 新バージョン 20260401（属性情報対応版）を使用する
+    const api = new URL("https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260401");
     api.searchParams.set("format", "json");
     api.searchParams.set("applicationId", applicationId);
     if (accessKey) api.searchParams.set("accessKey", accessKey);
