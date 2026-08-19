@@ -457,6 +457,10 @@ input[type=range]{width:100%;accent-color:#263b52;}
           <input class="textInput" id="settingRakutenAppId">
         </div>
         <div class="field">
+          <div class="fieldLabel">楽天アクセスキー（Access Key。2026年5月以降の新API仕様で必須／pk_で始まる文字列）</div>
+          <input class="textInput" id="settingRakutenAccessKey" placeholder="pk_xxxxxxxxxxxxxxxxxxxx">
+        </div>
+        <div class="field">
           <div class="fieldLabel">楽天アフィリエイトID</div>
           <input class="textInput" id="settingRakutenAffiliateId">
         </div>
@@ -764,6 +768,7 @@ const DEFAULT_SETTINGS = {
   affiliateTag: "your-associate-id-22", // ← Amazonアソシエイトタグ（管理画面からも変更可）
   workerUrl: "",                        // ← Amazon PA-API連携Worker（売上実績が貯まったら）
   rakutenAppId: "",                     // ← 楽天ウェブサービスのアプリID（即日発行可）
+  rakutenAccessKey: "",                 // ← 楽天のアクセスキー（2026年5月以降の新API仕様で必須。pk_で始まる）
   rakutenAffiliateId: "",               // ← 楽天アフィリエイトID
   rakutenWorkerUrl: ""                  // ← 楽天API中継Worker（CORS回避用、署名不要の軽量版）
 };
@@ -1472,10 +1477,10 @@ async function tryFetchRakutenData(sake){
   if(sake.confirmedImage){
     applyProductData(sake, {image: sake.confirmedImage}, "rakuten");
   }
-  const {rakutenWorkerUrl, rakutenAppId, rakutenAffiliateId} = getSettings();
+  const {rakutenWorkerUrl, rakutenAppId, rakutenAccessKey, rakutenAffiliateId} = getSettings();
   if(!rakutenWorkerUrl || !rakutenAppId) return;
   try{
-    const url = `${rakutenWorkerUrl}?keywords=${encodeURIComponent(sake.amazonQuery)}&applicationId=${encodeURIComponent(rakutenAppId)}&affiliateId=${encodeURIComponent(rakutenAffiliateId||"")}`;
+    const url = `${rakutenWorkerUrl}?keywords=${encodeURIComponent(sake.amazonQuery)}&applicationId=${encodeURIComponent(rakutenAppId)}&accessKey=${encodeURIComponent(rakutenAccessKey||"")}&affiliateId=${encodeURIComponent(rakutenAffiliateId||"")}`;
     const res = await fetch(url);
     if(!res.ok) return;
     const data = await res.json(); // 期待する形: {image, price, url, title}
@@ -1509,10 +1514,10 @@ function fetchProductImage(sake){
        （検索キーワードのミスマッチやAPI不調に左右されず確実に表示するため） */
     if(sake.confirmedImage) return {image: sake.confirmedImage};
 
-    const {rakutenWorkerUrl, rakutenAppId, rakutenAffiliateId, workerUrl} = getSettings();
+    const {rakutenWorkerUrl, rakutenAppId, rakutenAccessKey, rakutenAffiliateId, workerUrl} = getSettings();
     if(rakutenWorkerUrl && rakutenAppId){
       try{
-        const url = `${rakutenWorkerUrl}?keywords=${encodeURIComponent(sake.amazonQuery)}&applicationId=${encodeURIComponent(rakutenAppId)}&affiliateId=${encodeURIComponent(rakutenAffiliateId||"")}`;
+        const url = `${rakutenWorkerUrl}?keywords=${encodeURIComponent(sake.amazonQuery)}&applicationId=${encodeURIComponent(rakutenAppId)}&accessKey=${encodeURIComponent(rakutenAccessKey||"")}&affiliateId=${encodeURIComponent(rakutenAffiliateId||"")}`;
         const res = await fetch(url);
         if(res.ok){
           const data = await res.json();
@@ -2018,6 +2023,7 @@ function switchAdminTab(tab){
     document.getElementById("settingAffiliateTag").value = s.affiliateTag;
     document.getElementById("settingWorkerUrl").value = s.workerUrl;
     document.getElementById("settingRakutenAppId").value = s.rakutenAppId;
+    document.getElementById("settingRakutenAccessKey").value = s.rakutenAccessKey;
     document.getElementById("settingRakutenAffiliateId").value = s.rakutenAffiliateId;
     document.getElementById("settingRakutenWorkerUrl").value = s.rakutenWorkerUrl;
   }
@@ -2206,6 +2212,7 @@ function saveAdminSettings(){
     affiliateTag: document.getElementById("settingAffiliateTag").value.trim() || DEFAULT_SETTINGS.affiliateTag,
     workerUrl: document.getElementById("settingWorkerUrl").value.trim(),
     rakutenAppId: document.getElementById("settingRakutenAppId").value.trim(),
+    rakutenAccessKey: document.getElementById("settingRakutenAccessKey").value.trim(),
     rakutenAffiliateId: document.getElementById("settingRakutenAffiliateId").value.trim(),
     rakutenWorkerUrl: document.getElementById("settingRakutenWorkerUrl").value.trim()
   });
@@ -2342,22 +2349,32 @@ const RAKUTEN_WORKER_CODE = `export default {
     const url = new URL(request.url);
     const keywords = url.searchParams.get("keywords") || "";
     const applicationId = url.searchParams.get("applicationId") || "";
+    const accessKey = url.searchParams.get("accessKey") || "";
     const affiliateId = url.searchParams.get("affiliateId") || "";
     if (!keywords || !applicationId) {
       return new Response(JSON.stringify({ error: "keywords and applicationId required" }), { status: 400, headers: corsHeaders() });
     }
 
-    const api = new URL("https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601");
+    // 2026年5月13日の楽天API仕様変更に対応：
+    // ・エンドポイントが openapi.rakuten.co.jp/ichibams/ に変更
+    // ・UUID形式の新applicationIdでは accessKey が別途必須
+    // ・Referer/Origin ヘッダーが無いと弾かれる
+    const api = new URL("https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601");
     api.searchParams.set("format", "json");
-    api.searchParams.set("keyword", keywords);
     api.searchParams.set("applicationId", applicationId);
+    if (accessKey) api.searchParams.set("accessKey", accessKey);
     if (affiliateId) api.searchParams.set("affiliateId", affiliateId);
     api.searchParams.set("hits", "10");
 
     // 画像が付いているアイテムを探すヘルパー（1件だけだと画像なし商品がヒットして失敗しやすいため）
     async function searchAndPickWithImage(keyword) {
       api.searchParams.set("keyword", keyword);
-      const res = await fetch(api.toString());
+      const res = await fetch(api.toString(), {
+        headers: {
+          "Referer": url.origin,
+          "Origin": url.origin
+        }
+      });
       if (!res.ok) return { error: "rakuten api error " + res.status, status: 502 };
       const data = await res.json();
       const items = (data.Items || []).map(i => i.Item).filter(Boolean);
